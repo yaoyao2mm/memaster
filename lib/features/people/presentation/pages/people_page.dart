@@ -18,22 +18,42 @@ class PeoplePage extends StatefulWidget {
 
 class _PeoplePageState extends State<PeoplePage> {
   late Future<List<PersonCluster>> _peopleFuture;
+  late final TextEditingController _queryController;
   bool _submitting = false;
+  String _query = '';
+  String _reviewFilter = 'all';
 
   @override
   void initState() {
     super.initState();
+    _queryController = TextEditingController();
     _peopleFuture = widget._repository.fetchPeople();
   }
 
-  Future<void> _confirmPerson(PersonCluster person, bool isSelf) async {
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  void _refresh() {
+    setState(() {
+      _peopleFuture = widget._repository.fetchPeople();
+    });
+  }
+
+  Future<void> _confirmPerson(
+    PersonCluster person, {
+    required bool isSelf,
+    required String name,
+  }) async {
     if (_submitting) return;
     setState(() {
       _submitting = true;
     });
     final ok = await widget._repository.confirmPerson(
       clusterId: person.id,
-      name: isSelf ? '我' : person.name == '待确认人物 A' ? '朋友' : person.name,
+      name: name,
       isSelf: isSelf,
     );
     if (!mounted) return;
@@ -46,6 +66,51 @@ class _PeoplePageState extends State<PeoplePage> {
     );
   }
 
+  Future<void> _showConfirmDialog(PersonCluster person,
+      {required bool isSelf}) async {
+    final controller = TextEditingController(
+      text: isSelf
+          ? '我'
+          : person.name.startsWith('待确认')
+              ? ''
+              : person.name,
+    );
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(isSelf ? '确认“本人”身份' : '确认人物名称'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: isSelf ? '我' : '输入人物名称',
+            ),
+            onSubmitted: (value) {
+              Navigator.of(context).pop(value.trim());
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(controller.text.trim()),
+              child: const Text('确认'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (!mounted || result == null || result.isEmpty) {
+      return;
+    }
+    await _confirmPerson(person, isSelf: isSelf, name: result);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -53,6 +118,25 @@ class _PeoplePageState extends State<PeoplePage> {
       future: _peopleFuture,
       builder: (context, snapshot) {
         final people = snapshot.data ?? const <PersonCluster>[];
+        final filteredPeople = people.where((person) {
+          final reviewMatches = _reviewFilter == 'all' ||
+              (_reviewFilter == 'confirmed' &&
+                  person.reviewState == 'confirmed') ||
+              (_reviewFilter == 'needs_review' &&
+                  person.reviewState != 'confirmed');
+          if (!reviewMatches) {
+            return false;
+          }
+          if (_query.isEmpty) {
+            return true;
+          }
+          final haystack = '${person.name} ${person.trait}'.toLowerCase();
+          return haystack.contains(_query);
+        }).toList();
+        final confirmedCount =
+            people.where((person) => person.reviewState == 'confirmed').length;
+        final pendingCount = people.length - confirmedCount;
+        final selfCount = people.where((person) => person.isSelf).length;
         return ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
@@ -66,20 +150,108 @@ class _PeoplePageState extends State<PeoplePage> {
                     actionLabel: '重新聚类',
                   ),
                   const SizedBox(height: 22),
-                  if (snapshot.connectionState == ConnectionState.waiting && people.isEmpty)
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      FilledButton.tonalIcon(
+                        onPressed: _refresh,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('刷新人物'),
+                      ),
+                      _ReviewPill(label: '已确认 $confirmedCount'),
+                      _ReviewPill(label: '待确认 $pendingCount'),
+                      _ReviewPill(label: '本人 $selfCount'),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: _queryController,
+                    onChanged: (value) {
+                      setState(() {
+                        _query = value.trim().toLowerCase();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: '搜索人物名称或特征，例如 家人 / 最近新增',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () {
+                                _queryController.clear();
+                                setState(() {
+                                  _query = '';
+                                });
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.72),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: const BorderSide(color: AppColors.line),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: const BorderSide(color: AppColors.line),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      ChoiceChip(
+                        selected: _reviewFilter == 'all',
+                        label: const Text('全部'),
+                        onSelected: (_) {
+                          setState(() {
+                            _reviewFilter = 'all';
+                          });
+                        },
+                      ),
+                      ChoiceChip(
+                        selected: _reviewFilter == 'needs_review',
+                        label: const Text('待确认'),
+                        onSelected: (_) {
+                          setState(() {
+                            _reviewFilter = 'needs_review';
+                          });
+                        },
+                      ),
+                      ChoiceChip(
+                        selected: _reviewFilter == 'confirmed',
+                        label: const Text('已确认'),
+                        onSelected: (_) {
+                          setState(() {
+                            _reviewFilter = 'confirmed';
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      people.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 32),
                       child: Center(child: CircularProgressIndicator()),
                     )
+                  else if (filteredPeople.isEmpty)
+                    Text('当前筛选条件下没有人物簇。', style: theme.textTheme.bodyLarge)
                   else
-                    ...people.map(
+                    ...filteredPeople.map(
                       (person) => Padding(
                         padding: const EdgeInsets.only(bottom: 14),
                         child: _PersonReviewTile(
                           person: person,
                           busy: _submitting,
-                          onConfirmSelf: () => _confirmPerson(person, true),
-                          onConfirmKnown: () => _confirmPerson(person, false),
+                          onConfirmSelf: () =>
+                              _showConfirmDialog(person, isSelf: true),
+                          onConfirmKnown: () =>
+                              _showConfirmDialog(person, isSelf: false),
                         ),
                       ),
                     ),
@@ -116,7 +288,8 @@ class _PeoplePageState extends State<PeoplePage> {
                     ),
                     child: Text(
                       '“本人”不是直接分类结果，而是聚类 + 人工确认之后的稳定身份标签。',
-                      style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white),
+                      style: theme.textTheme.bodyLarge
+                          ?.copyWith(color: Colors.white),
                     ),
                   ),
                 ],
@@ -125,6 +298,24 @@ class _PeoplePageState extends State<PeoplePage> {
           ],
         );
       },
+    );
+  }
+}
+
+class _ReviewPill extends StatelessWidget {
+  const _ReviewPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F5FF),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(label, style: Theme.of(context).textTheme.labelLarge),
     );
   }
 }
@@ -159,7 +350,8 @@ class _PersonReviewTile extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: person.color,
-                child: Text(person.name.substring(0, 1), style: theme.textTheme.titleMedium),
+                child: Text(person.name.substring(0, 1),
+                    style: theme.textTheme.titleMedium),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -179,7 +371,8 @@ class _PersonReviewTile extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: person.reviewState == 'confirmed'
                       ? const Color(0xFFE9FFF1)
