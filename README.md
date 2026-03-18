@@ -1,6 +1,8 @@
 # memaster
 
-memaster is a Flutter-first memory layer for NAS media. It turns SMB-mounted folders into smart albums, people clusters, correction loops, and event-style memory cards.
+memaster is a Flutter-first, local-first memory layer for personal media. It
+turns local folders, mounted NAS paths, and other file-based sources into smart
+albums, people clusters, correction loops, and event-style memory cards.
 
 [GitHub Repository](https://github.com/yaoyao2mm/memaster)
 
@@ -9,7 +11,7 @@ memaster is a Flutter-first memory layer for NAS media. It turns SMB-mounted fol
 This repository contains:
 
 - A polished Flutter UI skeleton for the first desktop/mobile MVP
-- Product and architecture notes for the NAS memory workflow
+- Product and architecture notes for a multi-source media index
 - A design direction derived from Horizon UI and Apple-style software
 - A local FastAPI service skeleton for indexing and smart-memory APIs
 
@@ -17,7 +19,7 @@ This repository contains:
 
 1. Start the local API service
 2. Launch the Flutter app on macOS
-3. Open `整理` and submit a NAS-mounted path
+3. Open `整理` and submit a local or mounted path
 4. Open `智能相册` to review scanned assets and adjust labels
 5. Open `人物` to confirm identities
 6. Open `时间轴` to browse memory cards and event assets
@@ -25,7 +27,7 @@ This repository contains:
 ## macOS demo preview
 
 The current desktop demo already covers the main loop of the product:
-scan a mounted NAS folder, let the system group assets into semantic albums,
+scan a local or mounted folder, let the system group assets into semantic albums,
 confirm people clusters, and revisit those materials again through event-style
 timeline cards.
 
@@ -37,9 +39,10 @@ timeline cards.
 
 ## Planned product shape
 
-`memaster` is not a generic NAS file browser. It is a personal memory layer on top of NAS media:
+`memaster` is not a generic file browser. It is a personal memory layer on top
+of your media sources:
 
-- Connect to a NAS over SMB or a mounted network folder
+- Connect local folders, mounted NAS paths, and other file-based libraries
 - Scan and index photos and videos
 - Build smart albums such as cats, portraits, self, travel, food
 - Let the user correct labels and train the system over time
@@ -54,7 +57,7 @@ timeline cards.
 
 ## Implemented demo capabilities
 
-- Real scan jobs against SMB-mounted or local folders
+- Real scan jobs against local or mounted folders
 - SQLite-backed asset index
 - Smart album aggregation
 - Asset-level label correction with persistence
@@ -79,7 +82,7 @@ flutter run -d macos
 
 ## Trigger a real scan from Flutter
 
-1. Mount your UGREEN NAS over SMB so it appears as a local path such as `/Volumes/UGREEN/HomeMedia`
+1. Choose a local folder or mount your UGREEN NAS over SMB so it appears as a local path such as `/Volumes/UGREEN/HomeMedia`
 2. Start the local API service
 3. Launch the Flutter app
 4. Open the `整理` page

@@ -33,7 +33,7 @@ This app should feel like:
 
 - A private gallery
 - A memory studio
-- A beautiful intelligence layer on top of a NAS
+- A beautiful intelligence layer on top of personal media sources
 
 It should not feel like:
 

@@ -2,7 +2,8 @@
 
 ## Goal
 
-Define the contract between the Flutter app and the local indexing / inference service.
+Define the contract between the Flutter app and the local indexing / inference
+service.
 
 ## Runtime
 
@@ -32,15 +33,33 @@ Example response:
 }
 ```
 
-### `POST /scan-jobs`
+### `GET /sources`
 
-Create a scan task for a mounted NAS path.
+Returns configured media sources.
+
+### `POST /sources`
+
+Create a source.
 
 Request:
 
 ```json
 {
-  "root_path": "/Volumes/UGREEN/HomeMedia",
+  "source_type": "local_folder",
+  "display_name": "Mac Photos Export",
+  "root_path": "/Users/john/Pictures/Exports"
+}
+```
+
+### `POST /scan-jobs`
+
+Create a scan task for a configured source.
+
+Request:
+
+```json
+{
+  "source_id": "source_001",
   "recursive": true,
   "mode": "incremental"
 }
@@ -66,6 +85,7 @@ Returns the aggregate data required by the home dashboard.
 Suggested payload sections:
 
 - `stats`
+- `sources`
 - `smart_albums`
 - `signals`
 - `recent_events`
@@ -79,6 +99,7 @@ Query params:
 
 - `type`
 - `sort`
+- `source_id`
 - `limit`
 
 ### `GET /assets`
@@ -88,6 +109,8 @@ Returns scanned media assets.
 Query params:
 
 - `album_type`
+- `source_id`
+- `tag`
 - `limit`
 
 ### `GET /people`
@@ -128,6 +151,7 @@ Request:
 
 ## Suggested SQLite entities
 
+- `media_sources`
 - `media_assets`
 - `scan_jobs`
 - `asset_embeddings`
