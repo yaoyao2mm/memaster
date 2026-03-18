@@ -27,6 +27,7 @@ void main() {
   final repository = MemoryRepository(apiClient: _FailingApiClient());
   const destinations = [
     AppDestination(label: '总览', icon: Icons.grid_view_rounded),
+    AppDestination(label: '资产库', icon: Icons.perm_media_rounded),
     AppDestination(label: '智能相册', icon: Icons.photo_library_rounded),
     AppDestination(label: '人物', icon: Icons.group_rounded),
     AppDestination(label: '时间轴', icon: Icons.auto_stories_rounded),
@@ -64,7 +65,7 @@ void main() {
       title: '智能相册',
       subtitle: '按语义自动组织，而不是按文件夹命名来回查找。',
       child: AlbumsPage(repository: repository),
-      selectedIndex: 1,
+      selectedIndex: 2,
     );
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('../assets/readme/albums-demo.png'));
@@ -76,7 +77,7 @@ void main() {
       title: '人物与关系',
       subtitle: '先做聚类，再由你确认谁是谁，系统才会稳定记住。',
       child: PeoplePage(repository: repository),
-      selectedIndex: 2,
+      selectedIndex: 3,
     );
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('../assets/readme/people-demo.png'));
@@ -88,7 +89,7 @@ void main() {
       title: '记忆时间轴',
       subtitle: '让系统把素材按事件和时间重新讲述，而不是平铺所有图片。',
       child: TimelinePage(repository: repository),
-      selectedIndex: 3,
+      selectedIndex: 4,
     );
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('../assets/readme/timeline-demo.png'));
@@ -100,7 +101,7 @@ void main() {
       title: '整理中枢',
       subtitle: '所有扫描、缩略图、分类和待修正任务都应该在这里被管理。',
       child: OrganizePage(repository: repository),
-      selectedIndex: 4,
+      selectedIndex: 5,
     );
     await expectLater(find.byType(MaterialApp),
         matchesGoldenFile('../assets/readme/organize-demo.png'));

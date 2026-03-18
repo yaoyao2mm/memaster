@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/models/app_models.dart';
 import '../../../albums/presentation/pages/albums_page.dart';
 import '../../../home/presentation/pages/home_page.dart';
+import '../../../library/presentation/pages/library_page.dart';
 import '../../../organize/presentation/pages/organize_page.dart';
 import '../../../people/presentation/pages/people_page.dart';
 import '../../../timeline/presentation/pages/timeline_page.dart';
@@ -20,6 +21,7 @@ class AppShellPage extends StatefulWidget {
 class _AppShellPageState extends State<AppShellPage> {
   static const destinations = [
     AppDestination(label: '总览', icon: Icons.grid_view_rounded),
+    AppDestination(label: '资产库', icon: Icons.perm_media_rounded),
     AppDestination(label: '智能相册', icon: Icons.photo_library_rounded),
     AppDestination(label: '人物', icon: Icons.group_rounded),
     AppDestination(label: '时间轴', icon: Icons.auto_stories_rounded),
@@ -39,13 +41,15 @@ class _AppShellPageState extends State<AppShellPage> {
     final rawValue = Platform.environment['MEMASTER_SCREENSHOT_PAGE'];
     switch (rawValue) {
       case 'albums':
+        return 2;
+      case 'library':
         return 1;
       case 'people':
-        return 2;
-      case 'timeline':
         return 3;
-      case 'organize':
+      case 'timeline':
         return 4;
+      case 'organize':
+        return 5;
       default:
         return defaultIndex;
     }
@@ -58,6 +62,11 @@ class _AppShellPageState extends State<AppShellPage> {
         title: '你的记忆总览',
         subtitle: '先看系统对素材的理解结果，再进入具体分类和修正流程。',
         child: HomePage(),
+      ),
+      (
+        title: '统一资产库',
+        subtitle: '先按来源、标签和路径筛选，再决定从哪条记忆线继续深入。',
+        child: LibraryPage(),
       ),
       (
         title: '智能相册',

@@ -63,11 +63,13 @@ class MemoryRepository {
 
   Future<List<MediaAsset>> fetchAssets({
     String? albumType,
+    String? sourceId,
     int? limit,
   }) async {
     try {
       final params = <String>[
         if (albumType != null && albumType.isNotEmpty) 'album_type=$albumType',
+        if (sourceId != null && sourceId.isNotEmpty) 'source_id=$sourceId',
         if (limit != null) 'limit=$limit',
       ];
       final suffix = params.isEmpty ? '' : '?${params.join('&')}';
@@ -75,10 +77,14 @@ class MemoryRepository {
       return _parseList(json['items'], MediaAsset.fromJson);
     } catch (_) {
       final items = MockMemoryData.assets;
-      if (albumType == null || albumType.isEmpty) {
-        return items;
-      }
-      return items.where((item) => item.smartAlbumType == albumType).toList();
+      return items.where((item) {
+        final albumMatches = albumType == null ||
+            albumType.isEmpty ||
+            item.smartAlbumType == albumType;
+        final sourceMatches =
+            sourceId == null || sourceId.isEmpty || item.sourceId == sourceId;
+        return albumMatches && sourceMatches;
+      }).toList();
     }
   }
 
