@@ -10,7 +10,7 @@ import '../../../../core/widgets/section_title.dart';
 import '../../../../core/widgets/stat_chip.dart';
 import '../../../../core/models/app_models.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   HomePage({
     super.key,
     MemoryRepository? repository,
@@ -21,43 +21,96 @@ class HomePage extends StatelessWidget {
   final ValueChanged<AppShellTab>? onNavigate;
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late Future<DashboardData> _dashboardFuture;
+  DateTime? _lastLoadedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _dashboardFuture = _loadDashboard();
+  }
+
+  Future<DashboardData> _loadDashboard() async {
+    final data = await widget._repository.fetchDashboard();
+    if (mounted) {
+      setState(() {
+        _lastLoadedAt = DateTime.now();
+      });
+    }
+    return data;
+  }
+
+  Future<void> _refresh() async {
+    final future = _loadDashboard();
+    setState(() {
+      _dashboardFuture = future;
+    });
+    await future;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AsyncContent<DashboardData>(
-      future: _repository.fetchDashboard(),
+      future: _dashboardFuture,
+      onRetry: () {
+        _refresh();
+      },
       builder: (context, data) {
         return LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 1180;
-            return SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: isWide
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 7,
-                          child: _MainColumn(
-                            data: data,
-                            onNavigate: onNavigate,
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 24),
+                child: isWide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 7,
+                            child: _MainColumn(
+                              data: data,
+                              onNavigate: widget.onNavigate,
+                              onRefresh: _refresh,
+                              lastLoadedAt: _lastLoadedAt,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 24),
-                        Expanded(
-                          flex: 4,
-                          child: _SideColumn(
-                            data: data,
-                            onNavigate: onNavigate,
+                          const SizedBox(width: 24),
+                          Expanded(
+                            flex: 4,
+                            child: _SideColumn(
+                              data: data,
+                              onNavigate: widget.onNavigate,
+                              onRefresh: _refresh,
+                              lastLoadedAt: _lastLoadedAt,
+                            ),
                           ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        _MainColumn(data: data, onNavigate: onNavigate),
-                        const SizedBox(height: 24),
-                        _SideColumn(data: data, onNavigate: onNavigate),
-                      ],
-                    ),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          _MainColumn(
+                            data: data,
+                            onNavigate: widget.onNavigate,
+                            onRefresh: _refresh,
+                            lastLoadedAt: _lastLoadedAt,
+                          ),
+                          const SizedBox(height: 24),
+                          _SideColumn(
+                            data: data,
+                            onNavigate: widget.onNavigate,
+                            onRefresh: _refresh,
+                            lastLoadedAt: _lastLoadedAt,
+                          ),
+                        ],
+                      ),
+              ),
             );
           },
         );
@@ -70,16 +123,25 @@ class _MainColumn extends StatelessWidget {
   const _MainColumn({
     required this.data,
     this.onNavigate,
+    required this.onRefresh,
+    this.lastLoadedAt,
   });
 
   final DashboardData data;
   final ValueChanged<AppShellTab>? onNavigate;
+  final Future<void> Function() onRefresh;
+  final DateTime? lastLoadedAt;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _HeroPanel(data: data, onNavigate: onNavigate),
+        _HeroPanel(
+          data: data,
+          onNavigate: onNavigate,
+          onRefresh: onRefresh,
+          lastLoadedAt: lastLoadedAt,
+        ),
         const SizedBox(height: 24),
         _SourceOverviewSection(
           sources: data.sources,
@@ -105,10 +167,14 @@ class _SideColumn extends StatelessWidget {
   const _SideColumn({
     required this.data,
     this.onNavigate,
+    required this.onRefresh,
+    this.lastLoadedAt,
   });
 
   final DashboardData data;
   final ValueChanged<AppShellTab>? onNavigate;
+  final Future<void> Function() onRefresh;
+  final DateTime? lastLoadedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +184,8 @@ class _SideColumn extends StatelessWidget {
           jobs: data.scanJobs,
           sources: data.sources,
           onNavigate: onNavigate,
+          onRefresh: onRefresh,
+          lastLoadedAt: lastLoadedAt,
         ),
         const SizedBox(height: 24),
         _InsightPanel(signals: data.signals),
@@ -135,10 +203,14 @@ class _HeroPanel extends StatelessWidget {
   const _HeroPanel({
     required this.data,
     this.onNavigate,
+    required this.onRefresh,
+    this.lastLoadedAt,
   });
 
   final DashboardData data;
   final ValueChanged<AppShellTab>? onNavigate;
+  final Future<void> Function() onRefresh;
+  final DateTime? lastLoadedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -200,6 +272,11 @@ class _HeroPanel extends StatelessWidget {
                     label: '整理',
                     onTap: () => onNavigate?.call(AppShellTab.organize),
                   ),
+                  FilledButton.tonalIcon(
+                    onPressed: onRefresh,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('刷新总览'),
+                  ),
                 ],
               ),
               const SizedBox(height: 28),
@@ -233,6 +310,16 @@ class _HeroPanel extends StatelessWidget {
                     .toList(),
               ),
               const SizedBox(height: 28),
+              if (lastLoadedAt != null) ...[
+                Text(
+                  '最近刷新 ${_formatRefreshTime(lastLoadedAt!)}',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: AppColors.mutedInk,
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+              const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -577,11 +664,15 @@ class _StatusPanel extends StatelessWidget {
     required this.jobs,
     required this.sources,
     this.onNavigate,
+    required this.onRefresh,
+    this.lastLoadedAt,
   });
 
   final List<ScanJob> jobs;
   final List<MediaSource> sources;
   final ValueChanged<AppShellTab>? onNavigate;
+  final Future<void> Function() onRefresh;
+  final DateTime? lastLoadedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -602,7 +693,18 @@ class _StatusPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('系统状态', style: theme.textTheme.titleLarge),
+          Row(
+            children: [
+              Expanded(
+                child: Text('系统状态', style: theme.textTheme.titleLarge),
+              ),
+              IconButton(
+                tooltip: '刷新状态',
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ],
+          ),
           const SizedBox(height: 20),
           _StatusRow(
             label: '当前来源',
@@ -638,6 +740,15 @@ class _StatusPanel extends StatelessWidget {
                 : '${latestJob.title} ${(latestJob.progress) * 100 ~/ 1}%',
             style: theme.textTheme.bodyMedium,
           ),
+          if (lastLoadedAt != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              '刷新于 ${_formatRefreshTime(lastLoadedAt!)}',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: AppColors.mutedInk,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: () => onNavigate?.call(AppShellTab.organize),
@@ -841,4 +952,11 @@ String _shortTimestamp(String raw) {
     return raw.substring(5, 10);
   }
   return raw;
+}
+
+String _formatRefreshTime(DateTime value) {
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  final second = value.second.toString().padLeft(2, '0');
+  return '$hour:$minute:$second';
 }

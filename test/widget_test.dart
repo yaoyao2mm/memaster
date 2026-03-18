@@ -3,6 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memaster/app.dart';
+import 'package:memaster/core/data/memory_repository.dart';
+import 'package:memaster/core/data/mock_memory_data.dart';
+import 'package:memaster/core/models/app_models.dart';
+import 'package:memaster/core/theme/app_theme.dart';
+import 'package:memaster/features/home/presentation/pages/home_page.dart';
 
 void main() {
   testWidgets('home dashboard renders key memory sections',
@@ -103,4 +108,41 @@ void main() {
         tester.widget<TextField>(find.byType(TextField).first);
     expect(restoredField.controller?.text, 'cat');
   });
+
+  testWidgets('home page can retry dashboard loading after failure',
+      (WidgetTester tester) async {
+    final repository = _FlakyMemoryRepository();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: HomePage(repository: repository),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('重试加载'), findsOneWidget);
+
+    await tester.tap(find.text('重试加载'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('像杂志目录一样浏览你的记忆分类'), findsOneWidget);
+    expect(find.textContaining('最近刷新'), findsWidgets);
+  });
+}
+
+class _FlakyMemoryRepository extends MemoryRepository {
+  bool _failedOnce = false;
+
+  @override
+  Future<DashboardData> fetchDashboard() async {
+    if (!_failedOnce) {
+      _failedOnce = true;
+      throw Exception('temporary failure');
+    }
+    return MockMemoryData.dashboard;
+  }
 }

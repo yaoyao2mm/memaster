@@ -8,10 +8,12 @@ class AsyncContent<T> extends StatelessWidget {
     super.key,
     required this.future,
     required this.builder,
+    this.onRetry,
   });
 
   final Future<T> future;
   final Widget Function(BuildContext context, T data) builder;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +26,23 @@ class AsyncContent<T> extends StatelessWidget {
         }
         if (snapshot.hasError) {
           return GlassCard(
-            child: Text(
-              '数据暂时不可用，请检查本地服务状态。',
-              style: theme.textTheme.bodyLarge,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '数据暂时不可用，请检查本地服务状态。',
+                  style: theme.textTheme.bodyLarge,
+                ),
+                if (onRetry != null) ...[
+                  const SizedBox(height: 16),
+                  FilledButton.tonalIcon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('重试加载'),
+                  ),
+                ],
+              ],
             ),
           );
         }
