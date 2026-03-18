@@ -88,6 +88,17 @@ def test_sources_and_scan_job(tmp_path: Path):
     assert source_assets["total"] == 1
     assert source_assets["items"][0]["file_name"] == "coffee.jpg"
 
+    duplicate_source = client.post(
+        "/sources",
+        json={
+            "source_type": "local_folder",
+            "display_name": "Duplicate Name",
+            "root_path": str(second_root),
+        },
+    )
+    assert duplicate_source.status_code == 201
+    assert duplicate_source.json()["item"]["source_id"] == source_id
+
 
 def test_confirm_person(tmp_path: Path):
     client = make_client(tmp_path)

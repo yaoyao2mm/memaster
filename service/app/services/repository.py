@@ -70,6 +70,9 @@ class MemoryRepository:
         return self.create_source(payload)
 
     def create_source(self, payload: CreateSourceRequest) -> SourceItem:
+        existing = self.get_source_by_path(payload.root_path)
+        if existing is not None:
+            return existing
         root_path = Path(payload.root_path).expanduser()
         source_id = f"source_{uuid4().hex[:8]}"
         status = "ready" if root_path.exists() else "missing"

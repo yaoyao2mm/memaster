@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../core/data/memory_repository.dart';
 import '../../../../core/models/app_models.dart';
@@ -45,6 +48,149 @@ class _LibraryPageState extends State<LibraryPage> {
         limit: 240,
       );
     });
+  }
+
+  Future<void> _showAssetDetail(MediaAsset asset) async {
+    final theme = Theme.of(context);
+    final fullPath = _assetFullPath(asset);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: GlassCard(
+            borderRadius: 32,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(asset.fileName,
+                          style: theme.textTheme.headlineSmall),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '这条记录来自统一索引层。你现在看到的是来源、分类和文件定位信息。',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _MetaPill(label: asset.sourceName ?? 'Unknown Source'),
+                    _MetaPill(label: _albumLabel(asset.smartAlbumType)),
+                    _MetaPill(label: asset.mediaKind == 'video' ? '视频' : '图片'),
+                    _MetaPill(label: _formatSize(asset.sizeBytes)),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _DetailRow(label: '来源根目录', value: asset.rootPath),
+                _DetailRow(label: '相对路径', value: asset.relativePath),
+                _DetailRow(label: '完整路径', value: fullPath),
+                _DetailRow(label: '修改时间', value: asset.modifiedAt),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () => _openOriginal(fullPath),
+                      icon: const Icon(Icons.open_in_new_rounded),
+                      label: const Text('打开原文件'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _revealInFileManager(fullPath),
+                      icon: const Icon(Icons.folder_open_rounded),
+                      label: const Text('在 Finder 中显示'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: fullPath));
+                        if (!mounted) {
+                          return;
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('完整路径已复制')),
+                        );
+                      },
+                      icon: const Icon(Icons.content_copy_rounded),
+                      label: const Text('复制路径'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _assetFullPath(MediaAsset asset) {
+    final separator = asset.rootPath.endsWith(Platform.pathSeparator)
+        ? ''
+        : Platform.pathSeparator;
+    return '${asset.rootPath}$separator${asset.relativePath}';
+  }
+
+  Future<void> _openOriginal(String fullPath) async {
+    await _runDesktopOpen(
+      macosArgs: [fullPath],
+      linuxArgs: [fullPath],
+      windowsArgs: ['/c', 'start', '', fullPath],
+      failureMessage: '无法打开原文件',
+    );
+  }
+
+  Future<void> _revealInFileManager(String fullPath) async {
+    await _runDesktopOpen(
+      macosArgs: ['-R', fullPath],
+      linuxArgs: [File(fullPath).parent.path],
+      windowsArgs: ['/c', 'explorer', '/select,', fullPath],
+      failureMessage: '无法在文件管理器中定位该文件',
+    );
+  }
+
+  Future<void> _runDesktopOpen({
+    required List<String> macosArgs,
+    required List<String> linuxArgs,
+    required List<String> windowsArgs,
+    required String failureMessage,
+  }) async {
+    try {
+      ProcessResult result;
+      if (Platform.isMacOS) {
+        result = await Process.run('open', macosArgs);
+      } else if (Platform.isLinux) {
+        result = await Process.run('xdg-open', linuxArgs);
+      } else if (Platform.isWindows) {
+        result = await Process.run('cmd', windowsArgs);
+      } else {
+        throw UnsupportedError('Unsupported platform');
+      }
+      if (result.exitCode != 0) {
+        throw ProcessException(
+            'open', macosArgs, '${result.stderr}', result.exitCode);
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(failureMessage)));
+    }
   }
 
   @override
@@ -193,7 +339,10 @@ class _LibraryPageState extends State<LibraryPage> {
                               ),
                               itemBuilder: (context, index) {
                                 return _AssetLibraryCard(
-                                    asset: visibleAssets[index]);
+                                  asset: visibleAssets[index],
+                                  onTap: () =>
+                                      _showAssetDetail(visibleAssets[index]),
+                                );
                               },
                             );
                           },
@@ -211,72 +360,62 @@ class _LibraryPageState extends State<LibraryPage> {
 }
 
 class _AssetLibraryCard extends StatelessWidget {
-  const _AssetLibraryCard({required this.asset});
+  const _AssetLibraryCard({required this.asset, required this.onTap});
 
   final MediaAsset asset;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.84),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _AssetThumbnail(asset: asset),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(asset.fileName, style: theme.textTheme.titleMedium),
-                const SizedBox(height: 6),
-                Text(asset.relativePath, style: theme.textTheme.bodyMedium),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _MetaPill(label: asset.sourceName ?? 'Unknown Source'),
-                    _MetaPill(label: _albumLabel(asset.smartAlbumType)),
-                    _MetaPill(label: _formatSize(asset.sizeBytes)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  asset.rootPath,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: AppColors.mutedInk,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.84),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _AssetThumbnail(asset: asset),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(asset.fileName, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 6),
+                  Text(asset.relativePath, style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _MetaPill(label: asset.sourceName ?? 'Unknown Source'),
+                      _MetaPill(label: _albumLabel(asset.smartAlbumType)),
+                      _MetaPill(label: _formatSize(asset.sizeBytes)),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Text(
+                    asset.rootPath,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: AppColors.mutedInk,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.mutedInk),
+          ],
+        ),
       ),
     );
-  }
-
-  String _albumLabel(String value) {
-    switch (value) {
-      case 'pet':
-        return '宠物';
-      case 'travel':
-        return '旅行';
-      case 'document':
-        return '文档';
-      case 'video':
-        return '视频';
-      case 'food':
-        return '美食';
-      default:
-        return '日常';
-    }
   }
 }
 
@@ -303,6 +442,46 @@ class _LibraryAlbumChip {
 
   final String label;
   final String value;
+}
+
+String _albumLabel(String value) {
+  switch (value) {
+    case 'pet':
+      return '宠物';
+    case 'travel':
+      return '旅行';
+    case 'document':
+      return '文档';
+    case 'video':
+      return '视频';
+    case 'food':
+      return '美食';
+    default:
+      return '日常';
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: theme.textTheme.labelLarge),
+          const SizedBox(height: 4),
+          Text(value, style: theme.textTheme.bodyMedium),
+        ],
+      ),
+    );
+  }
 }
 
 String _formatSize(int bytes) {
