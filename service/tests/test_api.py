@@ -120,6 +120,24 @@ def test_assets_filter(tmp_path: Path):
     assert payload["total"] == 1
     assert payload["items"][0]["file_name"] == "cat_sleeping.jpg"
     assert payload["items"][0]["thumbnail_url"].endswith(".svg")
+    assert payload["items"][0]["tags"] == []
+
+
+def test_asset_tags_lifecycle(tmp_path: Path):
+    client = make_client(tmp_path)
+    asset_id = client.get("/assets", params={"album_type": "pet"}).json()["items"][0]["asset_id"]
+
+    added = client.post(f"/assets/{asset_id}/tags", json={"tag": "猫猫"})
+    assert added.status_code == 200
+    assert "猫猫" in added.json()["item"]["tags"]
+
+    duplicate = client.post(f"/assets/{asset_id}/tags", json={"tag": "猫猫"})
+    assert duplicate.status_code == 200
+    assert duplicate.json()["item"]["tags"].count("猫猫") == 1
+
+    removed = client.delete(f"/assets/{asset_id}/tags/%E7%8C%AB%E7%8C%AB")
+    assert removed.status_code == 200
+    assert "猫猫" not in removed.json()["item"]["tags"]
 
 
 def test_album_correction_updates_asset(tmp_path: Path):

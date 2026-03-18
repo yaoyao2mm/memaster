@@ -44,4 +44,14 @@ class LocalApiClient {
     }
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
+
+  Future<Map<String, dynamic>> deleteJson(String path) async {
+    final uri = Uri.parse('$_baseUrl$path');
+    final response =
+        await _httpClient.delete(uri).timeout(const Duration(seconds: 5));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Request failed: ${response.statusCode}');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
 }

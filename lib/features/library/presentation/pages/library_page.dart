@@ -22,6 +22,7 @@ class LibraryPage extends StatefulWidget {
 class _LibraryPageState extends State<LibraryPage> {
   late Future<List<MediaSource>> _sourcesFuture;
   late Future<List<MediaAsset>> _assetsFuture;
+  List<MediaAsset> _assetsCache = const [];
   String? _selectedSourceId;
   String _selectedAlbumType = 'all';
   String _query = '';
@@ -53,88 +54,206 @@ class _LibraryPageState extends State<LibraryPage> {
   Future<void> _showAssetDetail(MediaAsset asset) async {
     final theme = Theme.of(context);
     final fullPath = _assetFullPath(asset);
+    final tagController = TextEditingController();
+    var currentAsset = asset;
+    var tagSubmitting = false;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          child: GlassCard(
-            borderRadius: 32,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Future<void> syncAsset(MediaAsset nextAsset) async {
+              currentAsset = nextAsset;
+              if (mounted) {
+                setState(() {
+                  _assetsCache = _assetsCache
+                      .map((item) =>
+                          item.assetId == nextAsset.assetId ? nextAsset : item)
+                      .toList();
+                });
+              }
+              setSheetState(() {});
+            }
+
+            Future<void> addTag() async {
+              final tag = tagController.text.trim();
+              if (tag.isEmpty || tagSubmitting) {
+                return;
+              }
+              setSheetState(() {
+                tagSubmitting = true;
+              });
+              final updated = await widget._repository.addAssetTag(
+                assetId: currentAsset.assetId,
+                tag: tag,
+              );
+              tagController.clear();
+              setSheetState(() {
+                tagSubmitting = false;
+              });
+              if (updated != null) {
+                await syncAsset(updated);
+              }
+            }
+
+            Future<void> removeTag(String tag) async {
+              if (tagSubmitting) {
+                return;
+              }
+              setSheetState(() {
+                tagSubmitting = true;
+              });
+              final updated = await widget._repository.removeAssetTag(
+                assetId: currentAsset.assetId,
+                tag: tag,
+              );
+              setSheetState(() {
+                tagSubmitting = false;
+              });
+              if (updated != null) {
+                await syncAsset(updated);
+              }
+            }
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: GlassCard(
+                borderRadius: 32,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(asset.fileName,
-                          style: theme.textTheme.headlineSmall),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            currentAsset.fileName,
+                            style: theme.textTheme.headlineSmall,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close_rounded),
+                    const SizedBox(height: 8),
+                    Text(
+                      '这条记录来自统一索引层。你现在可以维护来源、分类、标签和文件定位信息。',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 18),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _MetaPill(
+                            label: currentAsset.sourceName ?? 'Unknown Source'),
+                        _MetaPill(
+                            label: _albumLabel(currentAsset.smartAlbumType)),
+                        _MetaPill(
+                            label: currentAsset.mediaKind == 'video'
+                                ? '视频'
+                                : '图片'),
+                        _MetaPill(label: _formatSize(currentAsset.sizeBytes)),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Text('用户标签', style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 10),
+                    if (currentAsset.tags.isEmpty)
+                      Text('还没有用户标签。', style: theme.textTheme.bodyMedium)
+                    else
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: currentAsset.tags
+                            .map(
+                              (tag) => InputChip(
+                                label: Text(tag),
+                                onDeleted: () => removeTag(tag),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: tagController,
+                            decoration: InputDecoration(
+                              hintText: '新增标签，例如 猫猫 / 精选 / 要整理',
+                              filled: true,
+                              fillColor: Colors.white.withValues(alpha: 0.72),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide:
+                                    const BorderSide(color: AppColors.line),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide:
+                                    const BorderSide(color: AppColors.line),
+                              ),
+                            ),
+                            onSubmitted: (_) => addTag(),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton(
+                          onPressed: tagSubmitting ? null : addTag,
+                          child: Text(tagSubmitting ? '提交中…' : '添加标签'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _DetailRow(label: '来源根目录', value: currentAsset.rootPath),
+                    _DetailRow(label: '相对路径', value: currentAsset.relativePath),
+                    _DetailRow(label: '完整路径', value: fullPath),
+                    _DetailRow(label: '修改时间', value: currentAsset.modifiedAt),
+                    const SizedBox(height: 20),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: () => _openOriginal(fullPath),
+                          icon: const Icon(Icons.open_in_new_rounded),
+                          label: const Text('打开原文件'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _revealInFileManager(fullPath),
+                          icon: const Icon(Icons.folder_open_rounded),
+                          label: const Text('在 Finder 中显示'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            await Clipboard.setData(
+                                ClipboardData(text: fullPath));
+                            if (!mounted) {
+                              return;
+                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('完整路径已复制')),
+                            );
+                          },
+                          icon: const Icon(Icons.content_copy_rounded),
+                          label: const Text('复制路径'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  '这条记录来自统一索引层。你现在看到的是来源、分类和文件定位信息。',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 18),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _MetaPill(label: asset.sourceName ?? 'Unknown Source'),
-                    _MetaPill(label: _albumLabel(asset.smartAlbumType)),
-                    _MetaPill(label: asset.mediaKind == 'video' ? '视频' : '图片'),
-                    _MetaPill(label: _formatSize(asset.sizeBytes)),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _DetailRow(label: '来源根目录', value: asset.rootPath),
-                _DetailRow(label: '相对路径', value: asset.relativePath),
-                _DetailRow(label: '完整路径', value: fullPath),
-                _DetailRow(label: '修改时间', value: asset.modifiedAt),
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: () => _openOriginal(fullPath),
-                      icon: const Icon(Icons.open_in_new_rounded),
-                      label: const Text('打开原文件'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _revealInFileManager(fullPath),
-                      icon: const Icon(Icons.folder_open_rounded),
-                      label: const Text('在 Finder 中显示'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () async {
-                        await Clipboard.setData(ClipboardData(text: fullPath));
-                        if (!mounted) {
-                          return;
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('完整路径已复制')),
-                        );
-                      },
-                      icon: const Icon(Icons.content_copy_rounded),
-                      label: const Text('复制路径'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
+    tagController.dispose();
   }
 
   String _assetFullPath(MediaAsset asset) {
@@ -292,6 +411,7 @@ class _LibraryPageState extends State<LibraryPage> {
               future: filteredAssetsFuture,
               builder: (context, assetSnapshot) {
                 final assets = assetSnapshot.data ?? const <MediaAsset>[];
+                _assetsCache = assets;
                 final visibleAssets = assets.where((asset) {
                   if (_query.isEmpty) {
                     return true;
@@ -301,6 +421,17 @@ class _LibraryPageState extends State<LibraryPage> {
                           .toLowerCase();
                   return haystack.contains(_query);
                 }).toList();
+                final displayAssets = _assetsCache.isEmpty
+                    ? visibleAssets
+                    : _assetsCache.where((asset) {
+                        if (_query.isEmpty) {
+                          return true;
+                        }
+                        final haystack =
+                            '${asset.fileName} ${asset.relativePath} ${asset.sourceName ?? ''} ${asset.tags.join(' ')}'
+                                .toLowerCase();
+                        return haystack.contains(_query);
+                      }).toList();
                 return GlassCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,7 +439,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       Text('已索引资产', style: theme.textTheme.titleLarge),
                       const SizedBox(height: 8),
                       Text(
-                        '当前显示 ${visibleAssets.length} 条结果',
+                        '当前显示 ${displayAssets.length} 条结果',
                         style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 18),
@@ -319,7 +450,7 @@ class _LibraryPageState extends State<LibraryPage> {
                           padding: EdgeInsets.symmetric(vertical: 32),
                           child: Center(child: CircularProgressIndicator()),
                         )
-                      else if (visibleAssets.isEmpty)
+                      else if (displayAssets.isEmpty)
                         Text('当前过滤条件下还没有资产。', style: theme.textTheme.bodyLarge)
                       else
                         LayoutBuilder(
@@ -329,7 +460,7 @@ class _LibraryPageState extends State<LibraryPage> {
                             return GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              itemCount: visibleAssets.length,
+                              itemCount: displayAssets.length,
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: columns,
@@ -339,9 +470,9 @@ class _LibraryPageState extends State<LibraryPage> {
                               ),
                               itemBuilder: (context, index) {
                                 return _AssetLibraryCard(
-                                  asset: visibleAssets[index],
+                                  asset: displayAssets[index],
                                   onTap: () =>
-                                      _showAssetDetail(visibleAssets[index]),
+                                      _showAssetDetail(displayAssets[index]),
                                 );
                               },
                             );

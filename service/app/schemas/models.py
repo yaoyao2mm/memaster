@@ -86,6 +86,7 @@ class AssetItem(BaseModel):
     media_kind: str
     smart_album_type: str
     thumbnail_url: str | None = None
+    tags: list[str] = Field(default_factory=list)
     size_bytes: int
     modified_at: str
     root_path: str
@@ -140,3 +141,7 @@ class CorrectionResponse(BaseModel):
     to: str
 
     model_config = {"populate_by_name": True}
+
+
+class AssetTagRequest(BaseModel):
+    tag: str

@@ -10,6 +10,7 @@ from app.core.database import Database
 from app.schemas.models import (
     AlbumItem,
     AssetItem,
+    AssetTagRequest,
     CorrectionRequest,
     CreateSourceRequest,
     ConfirmPersonRequest,
@@ -282,15 +283,73 @@ class MemoryRepository:
 
         with self.db.connection() as conn:
             rows = conn.execute(query, params).fetchall()
+        tags_map = self._asset_tags_map([row["asset_id"] for row in rows])
         return [
             AssetItem.model_validate(
                 {
                     **dict(row),
                     "thumbnail_url": self._thumbnail_url(dict(row).get("thumbnail_path")),
+                    "tags": tags_map.get(row["asset_id"], []),
                 }
             )
             for row in rows
         ]
+
+    def add_asset_tag(self, asset_id: str, payload: AssetTagRequest) -> AssetItem | None:
+        normalized = payload.tag.strip()
+        if not normalized:
+            return self.asset(asset_id)
+        with self.db.connection() as conn:
+            exists = conn.execute(
+                "SELECT asset_id FROM media_assets WHERE asset_id = ?",
+                (asset_id,),
+            ).fetchone()
+            if exists is None:
+                return None
+            conn.execute(
+                """
+                INSERT INTO asset_tags (asset_id, tag) VALUES (?, ?)
+                ON CONFLICT(asset_id, tag) DO NOTHING
+                """,
+                (asset_id, normalized),
+            )
+        return self.asset(asset_id)
+
+    def remove_asset_tag(self, asset_id: str, tag: str) -> AssetItem | None:
+        with self.db.connection() as conn:
+            exists = conn.execute(
+                "SELECT asset_id FROM media_assets WHERE asset_id = ?",
+                (asset_id,),
+            ).fetchone()
+            if exists is None:
+                return None
+            conn.execute(
+                "DELETE FROM asset_tags WHERE asset_id = ? AND tag = ?",
+                (asset_id, tag),
+            )
+        return self.asset(asset_id)
+
+    def asset(self, asset_id: str) -> AssetItem | None:
+        with self.db.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT asset_id, source_id, source_name, file_name, relative_path, media_kind,
+                       smart_album_type, thumbnail_path, size_bytes, modified_at, root_path
+                FROM media_assets
+                WHERE asset_id = ?
+                """,
+                (asset_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        tags_map = self._asset_tags_map([asset_id])
+        return AssetItem.model_validate(
+            {
+                **dict(row),
+                "thumbnail_url": self._thumbnail_url(dict(row).get("thumbnail_path")),
+                "tags": tags_map.get(asset_id, []),
+            }
+        )
 
     def apply_correction(self, payload: CorrectionRequest) -> CorrectionResponse:
         correction_id = f"cor_{uuid4().hex[:8]}"
@@ -574,6 +633,25 @@ class MemoryRepository:
                 """,
                 (status, 1 if scanned else 0, source_id),
             )
+
+    def _asset_tags_map(self, asset_ids: list[str]) -> dict[str, list[str]]:
+        if not asset_ids:
+            return {}
+        placeholders = ",".join("?" for _ in asset_ids)
+        with self.db.connection() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT asset_id, tag
+                FROM asset_tags
+                WHERE asset_id IN ({placeholders})
+                ORDER BY datetime(created_at) ASC, tag ASC
+                """,
+                asset_ids,
+            ).fetchall()
+        tags_map: dict[str, list[str]] = {asset_id: [] for asset_id in asset_ids}
+        for row in rows:
+            tags_map.setdefault(row["asset_id"], []).append(row["tag"])
+        return tags_map
 
     def _ensure_people_seed(self) -> None:
         with self.db.connection() as conn:

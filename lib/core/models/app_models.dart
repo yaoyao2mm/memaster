@@ -178,6 +178,7 @@ class MediaAsset {
     required this.mediaKind,
     required this.smartAlbumType,
     this.thumbnailUrl,
+    this.tags = const [],
     required this.sizeBytes,
     required this.modifiedAt,
     required this.rootPath,
@@ -191,6 +192,7 @@ class MediaAsset {
   final String mediaKind;
   final String smartAlbumType;
   final String? thumbnailUrl;
+  final List<String> tags;
   final int sizeBytes;
   final String modifiedAt;
   final String rootPath;
@@ -205,6 +207,7 @@ class MediaAsset {
       mediaKind: json['media_kind'] as String? ?? '',
       smartAlbumType: json['smart_album_type'] as String? ?? '',
       thumbnailUrl: json['thumbnail_url'] as String?,
+      tags: (json['tags'] as List?)?.whereType<String>().toList() ?? const [],
       sizeBytes: json['size_bytes'] as int? ?? 0,
       modifiedAt: json['modified_at'] as String? ?? '',
       rootPath: json['root_path'] as String? ?? '',

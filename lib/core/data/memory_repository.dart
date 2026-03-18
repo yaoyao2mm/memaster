@@ -202,6 +202,43 @@ class MemoryRepository {
     }
   }
 
+  Future<MediaAsset?> addAssetTag({
+    required String assetId,
+    required String tag,
+  }) async {
+    try {
+      final json = await _apiClient.postJson(
+        '/assets/$assetId/tags',
+        body: {'tag': tag},
+      );
+      final item = json['item'];
+      if (item is! Map) {
+        return null;
+      }
+      return MediaAsset.fromJson(item.cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<MediaAsset?> removeAssetTag({
+    required String assetId,
+    required String tag,
+  }) async {
+    try {
+      final encodedTag = Uri.encodeComponent(tag);
+      final json =
+          await _apiClient.deleteJson('/assets/$assetId/tags/$encodedTag');
+      final item = json['item'];
+      if (item is! Map) {
+        return null;
+      }
+      return MediaAsset.fromJson(item.cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
   List<T> _parseList<T>(
     dynamic raw,
     T Function(Map<String, dynamic>) parser,

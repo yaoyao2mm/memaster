@@ -68,6 +68,16 @@ CREATE TABLE IF NOT EXISTS user_corrections (
 CREATE INDEX IF NOT EXISTS idx_user_corrections_asset_id
 ON user_corrections (asset_id);
 
+CREATE TABLE IF NOT EXISTS asset_tags (
+    asset_id TEXT NOT NULL,
+    tag TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(asset_id, tag)
+);
+
+CREATE INDEX IF NOT EXISTS idx_asset_tags_asset_id
+ON asset_tags (asset_id);
+
 CREATE TABLE IF NOT EXISTS people_clusters (
     cluster_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

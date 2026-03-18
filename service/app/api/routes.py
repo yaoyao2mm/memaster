@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Request, status
 
 from app.schemas.models import (
+    AssetTagRequest,
     ConfirmPersonRequest,
     CorrectionRequest,
     CorrectionResponse,
@@ -61,6 +62,22 @@ def assets(
 ):
     items = _repository(request).assets(album_type=album_type, source_id=source_id, limit=limit)
     return {"items": items, "total": len(items)}
+
+
+@router.post("/assets/{asset_id}/tags")
+def add_asset_tag(request: Request, asset_id: str, payload: AssetTagRequest):
+    item = _repository(request).add_asset_tag(asset_id, payload)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    return {"item": item}
+
+
+@router.delete("/assets/{asset_id}/tags/{tag}")
+def remove_asset_tag(request: Request, asset_id: str, tag: str):
+    item = _repository(request).remove_asset_tag(asset_id, tag)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
+    return {"item": item}
 
 
 @router.get("/people")
