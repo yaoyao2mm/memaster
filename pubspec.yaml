@@ -28,3 +28,11 @@ flutter:
           weight: 500
         - asset: assets/fonts/PlusJakartaSans-Bold.ttf
           weight: 700
+    - family: NotoSansCJKsc
+      fonts:
+        - asset: assets/fonts/NotoSansCJKsc-Regular.otf
+          weight: 400
+        - asset: assets/fonts/NotoSansCJKsc-Regular.otf
+          weight: 500
+        - asset: assets/fonts/NotoSansCJKsc-Regular.otf
+          weight: 700

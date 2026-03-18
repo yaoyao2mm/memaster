@@ -3,12 +3,7 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 class AppTheme {
-  static const _cjkFallbacks = [
-    'PingFang SC',
-    'Hiragino Sans GB',
-    'Noto Sans CJK SC',
-    '.AppleSystemUIFont',
-  ];
+  static const _cjkFallbacks = ['NotoSansCJKsc'];
 
   static ThemeData light() {
     final base = ThemeData(
@@ -23,6 +18,7 @@ class AppTheme {
 
     final bodyTextTheme = base.textTheme.apply(
       fontFamily: 'PlusJakartaSans',
+      fontFamilyFallback: _cjkFallbacks,
       bodyColor: AppColors.ink,
       displayColor: AppColors.ink,
     );
