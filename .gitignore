@@ -1,0 +1,15 @@
+.dart_tool/
+.idea/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+build/
+pubspec.lock
+.pytest_cache/
+.venv/
+service/.venv/
+service/.pytest_cache/
+__pycache__/
+
+service/data/
