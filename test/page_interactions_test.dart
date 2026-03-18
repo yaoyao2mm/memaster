@@ -5,6 +5,7 @@ import 'package:memaster/core/data/memory_repository.dart';
 import 'package:memaster/core/network/local_api_client.dart';
 import 'package:memaster/core/theme/app_theme.dart';
 import 'package:memaster/features/albums/presentation/pages/albums_page.dart';
+import 'package:memaster/features/organize/presentation/pages/organize_page.dart';
 import 'package:memaster/features/people/presentation/pages/people_page.dart';
 import 'package:memaster/features/timeline/presentation/pages/timeline_page.dart';
 
@@ -57,6 +58,38 @@ void main() {
 
     expect(find.text('新人物簇待确认'), findsOneWidget);
     expect(find.text('猫咪相册更新'), findsNothing);
+  });
+
+  testWidgets('organize page validates missing source path before create',
+      (tester) async {
+    await pumpPage(tester, OrganizePage(repository: repository));
+
+    await tester.enterText(find.byType(TextField).first, '测试来源');
+    await tester.enterText(
+      find.byType(TextField).at(1),
+      '/path/that/does/not/exist',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, '添加来源'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('路径不存在，或挂载目录当前不可用。'), findsOneWidget);
+  });
+
+  testWidgets('organize page filters jobs by completion status',
+      (tester) async {
+    await pumpPage(tester, OrganizePage(repository: repository));
+
+    await tester.tap(find.widgetWithText(ChoiceChip, '已完成'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('人脸聚类复算'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('人脸聚类复算'), findsOneWidget);
+    expect(find.text('SMB 增量扫描'), findsNothing);
   });
 }
 

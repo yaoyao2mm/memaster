@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/data/memory_repository.dart';
@@ -19,21 +21,26 @@ class OrganizePage extends StatefulWidget {
 class _OrganizePageState extends State<OrganizePage> {
   late final TextEditingController _displayNameController;
   late final TextEditingController _pathController;
+  late final TextEditingController _correctionQueryController;
   late Future<List<MediaSource>> _sourcesFuture;
   late Future<List<ScanJob>> _jobsFuture;
   late Future<List<CorrectionRecord>> _correctionsFuture;
   String _sourceType = 'local_folder';
   String? _selectedSourceId;
   String _mode = 'incremental';
+  String _jobFilter = 'all';
   bool _recursive = true;
+  bool _focusSelectedSource = true;
   bool _submitting = false;
   bool _creatingSource = false;
+  String _correctionQuery = '';
 
   @override
   void initState() {
     super.initState();
     _displayNameController = TextEditingController(text: 'UGREEN HomeMedia');
     _pathController = TextEditingController(text: '/Volumes/UGREEN/HomeMedia');
+    _correctionQueryController = TextEditingController();
     _sourcesFuture = widget._repository.fetchSources();
     _jobsFuture = widget._repository.fetchScanJobs();
     _correctionsFuture = widget._repository.fetchCorrections();
@@ -43,6 +50,7 @@ class _OrganizePageState extends State<OrganizePage> {
   void dispose() {
     _displayNameController.dispose();
     _pathController.dispose();
+    _correctionQueryController.dispose();
     super.dispose();
   }
 
@@ -64,6 +72,12 @@ class _OrganizePageState extends State<OrganizePage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('请先填写来源名称和路径。')));
+      return;
+    }
+    if (!Directory(rootPath).existsSync()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('路径不存在，或挂载目录当前不可用。')),
+      );
       return;
     }
 
@@ -139,6 +153,69 @@ class _OrganizePageState extends State<OrganizePage> {
     );
   }
 
+  void _applyPreset({
+    required String displayName,
+    required String path,
+    required String sourceType,
+  }) {
+    setState(() {
+      _displayNameController.text = displayName;
+      _pathController.text = path;
+      _sourceType = sourceType;
+    });
+  }
+
+  String _homePath() {
+    final home = Platform.environment['HOME'];
+    if (home != null && home.isNotEmpty) {
+      return home;
+    }
+    return '/Users/john';
+  }
+
+  List<ScanJob> _filterJobs(List<ScanJob> jobs, MediaSource? selectedSource) {
+    return jobs.where((job) {
+      final sourceMatches = !_focusSelectedSource ||
+          selectedSource == null ||
+          job.sourceId == selectedSource.sourceId;
+      if (!sourceMatches) {
+        return false;
+      }
+      switch (_jobFilter) {
+        case 'active':
+          return job.status != '已完成';
+        case 'completed':
+          return job.status == '已完成';
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
+  List<CorrectionRecord> _filterCorrections(
+      List<CorrectionRecord> corrections) {
+    if (_correctionQuery.isEmpty) {
+      return corrections;
+    }
+    return corrections.where((item) {
+      final haystack =
+          '${item.assetId} ${item.kind} ${item.fromValue} ${item.toValue}'
+              .toLowerCase();
+      return haystack.contains(_correctionQuery);
+    }).toList();
+  }
+
+  Color _jobBadgeColor(String status) {
+    switch (status) {
+      case '已完成':
+        return const Color(0xFFE8FFF2);
+      case '排队中':
+        return const Color(0xFFFFF5E8);
+      default:
+        return const Color(0xFFEAF1FF);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -158,6 +235,8 @@ class _OrganizePageState extends State<OrganizePage> {
           future: _jobsFuture,
           builder: (context, snapshot) {
             final jobs = snapshot.data ?? const <ScanJob>[];
+            final filteredJobs = _filterJobs(jobs, selectedSource);
+            final activeJobs = jobs.where((job) => job.status != '已完成').length;
             return ListView(
               padding: const EdgeInsets.only(bottom: 24),
               children: [
@@ -185,6 +264,37 @@ class _OrganizePageState extends State<OrganizePage> {
                           labelText: '来源路径',
                           hintText: '/Volumes/UGREEN/HomeMedia',
                         ),
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          _PresetChip(
+                            label: 'UGREEN NAS',
+                            onTap: () => _applyPreset(
+                              displayName: 'UGREEN HomeMedia',
+                              path: '/Volumes/UGREEN/HomeMedia',
+                              sourceType: 'mounted_folder',
+                            ),
+                          ),
+                          _PresetChip(
+                            label: 'Pictures',
+                            onTap: () => _applyPreset(
+                              displayName: '我的照片',
+                              path: '${_homePath()}/Pictures',
+                              sourceType: 'local_folder',
+                            ),
+                          ),
+                          _PresetChip(
+                            label: 'Desktop Exports',
+                            onTap: () => _applyPreset(
+                              displayName: '导出素材',
+                              path: '${_homePath()}/Desktop/Exports',
+                              sourceType: 'local_folder',
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       Wrap(
@@ -228,6 +338,20 @@ class _OrganizePageState extends State<OrganizePage> {
                           OutlinedButton(
                             onPressed: _refresh,
                             child: const Text('刷新状态'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          _SummaryPill(label: '来源 ${sources.length}'),
+                          _SummaryPill(label: '运行中 $activeJobs'),
+                          _SummaryPill(
+                            label: selectedSource == null
+                                ? '未选来源'
+                                : '当前 ${selectedSource.displayName}',
                           ),
                         ],
                       ),
@@ -355,6 +479,49 @@ class _OrganizePageState extends State<OrganizePage> {
                         ],
                       ),
                       const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          FilterChip(
+                            selected: _focusSelectedSource,
+                            label: const Text('仅看当前来源任务'),
+                            onSelected: (value) {
+                              setState(() {
+                                _focusSelectedSource = value;
+                              });
+                            },
+                          ),
+                          ChoiceChip(
+                            selected: _jobFilter == 'all',
+                            label: const Text('全部任务'),
+                            onSelected: (_) {
+                              setState(() {
+                                _jobFilter = 'all';
+                              });
+                            },
+                          ),
+                          ChoiceChip(
+                            selected: _jobFilter == 'active',
+                            label: const Text('处理中'),
+                            onSelected: (_) {
+                              setState(() {
+                                _jobFilter = 'active';
+                              });
+                            },
+                          ),
+                          ChoiceChip(
+                            selected: _jobFilter == 'completed',
+                            label: const Text('已完成'),
+                            onSelected: (_) {
+                              setState(() {
+                                _jobFilter = 'completed';
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       Text(
                         '这一步只会记录并索引来源中的素材，不改变原文件存放位置。后续搜索、标签、人物和时间轴都建立在这层索引之上。',
                         style: theme.textTheme.bodyMedium,
@@ -373,11 +540,47 @@ class _OrganizePageState extends State<OrganizePage> {
                         actionLabel: '用于训练后续偏好',
                       ),
                       const SizedBox(height: 20),
+                      TextField(
+                        controller: _correctionQueryController,
+                        onChanged: (value) {
+                          setState(() {
+                            _correctionQuery = value.trim().toLowerCase();
+                          });
+                        },
+                        decoration: InputDecoration(
+                          hintText: '搜索修正记录，例如 asset / pet / daily',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _correctionQuery.isEmpty
+                              ? null
+                              : IconButton(
+                                  onPressed: () {
+                                    _correctionQueryController.clear();
+                                    setState(() {
+                                      _correctionQuery = '';
+                                    });
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.72),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: const BorderSide(color: AppColors.line),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: const BorderSide(color: AppColors.line),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
                       FutureBuilder<List<CorrectionRecord>>(
                         future: _correctionsFuture,
                         builder: (context, correctionSnapshot) {
                           final corrections = correctionSnapshot.data ??
                               const <CorrectionRecord>[];
+                          final filteredCorrections =
+                              _filterCorrections(corrections);
                           if (correctionSnapshot.connectionState ==
                                   ConnectionState.waiting &&
                               corrections.isEmpty) {
@@ -390,8 +593,12 @@ class _OrganizePageState extends State<OrganizePage> {
                             return Text('还没有人工修正记录。',
                                 style: theme.textTheme.bodyLarge);
                           }
+                          if (filteredCorrections.isEmpty) {
+                            return Text('当前搜索条件下没有修正记录。',
+                                style: theme.textTheme.bodyLarge);
+                          }
                           return Column(
-                            children: corrections
+                            children: filteredCorrections
                                 .map(
                                   (item) => Padding(
                                     padding: const EdgeInsets.only(bottom: 12),
@@ -458,8 +665,10 @@ class _OrganizePageState extends State<OrganizePage> {
                       else if (snapshot.hasError && jobs.isEmpty)
                         Text('当前无法连接本地服务，请先启动 FastAPI 服务。',
                             style: theme.textTheme.bodyLarge)
+                      else if (filteredJobs.isEmpty)
+                        Text('当前筛选条件下没有任务。', style: theme.textTheme.bodyLarge)
                       else
-                        ...jobs.map(
+                        ...filteredJobs.map(
                           (job) => Padding(
                             padding: const EdgeInsets.only(bottom: 14),
                             child: Container(
@@ -478,8 +687,19 @@ class _OrganizePageState extends State<OrganizePage> {
                                           child: Text(job.title,
                                               style:
                                                   theme.textTheme.titleMedium)),
-                                      Text(job.status,
-                                          style: theme.textTheme.labelLarge),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _jobBadgeColor(job.status),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        child: Text(job.status,
+                                            style: theme.textTheme.labelLarge),
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 10),
@@ -555,6 +775,42 @@ class _OrganizePageState extends State<OrganizePage> {
         borderRadius: BorderRadius.circular(18),
         borderSide: const BorderSide(color: AppColors.line),
       ),
+    );
+  }
+}
+
+class _PresetChip extends StatelessWidget {
+  const _PresetChip({
+    required this.label,
+    required this.onTap,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      label: Text(label),
+      onPressed: onTap,
+    );
+  }
+}
+
+class _SummaryPill extends StatelessWidget {
+  const _SummaryPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F5FF),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(label, style: Theme.of(context).textTheme.labelLarge),
     );
   }
 }
