@@ -30,11 +30,44 @@ class _AppShellPageState extends State<AppShellPage> {
     AppDestination(label: '整理', icon: Icons.tune_rounded),
   ];
 
+  late final List<_ShellPageConfig> _configs;
   late int selectedIndex;
 
   @override
   void initState() {
     super.initState();
+    _configs = [
+      _ShellPageConfig(
+        title: '你的记忆总览',
+        subtitle: '先看系统对素材的理解结果，再进入具体分类和修正流程。',
+        child: HomePage(onNavigate: _selectTab),
+      ),
+      _ShellPageConfig(
+        title: '统一资产库',
+        subtitle: '先按来源、标签和路径筛选，再决定从哪条记忆线继续深入。',
+        child: LibraryPage(),
+      ),
+      _ShellPageConfig(
+        title: '智能相册',
+        subtitle: '按语义自动组织，而不是按文件夹命名来回查找。',
+        child: AlbumsPage(),
+      ),
+      _ShellPageConfig(
+        title: '人物与关系',
+        subtitle: '先做聚类，再由你确认谁是谁，系统才会稳定记住。',
+        child: PeoplePage(),
+      ),
+      _ShellPageConfig(
+        title: '记忆时间轴',
+        subtitle: '让系统把素材按事件和时间重新讲述，而不是平铺所有图片。',
+        child: TimelinePage(),
+      ),
+      _ShellPageConfig(
+        title: '整理中枢',
+        subtitle: '所有扫描、缩略图、分类和待修正任务都应该在这里被管理。',
+        child: OrganizePage(),
+      ),
+    ];
     selectedIndex = widget.initialSelectedIndex ?? _initialSelectedIndex();
   }
 
@@ -65,47 +98,36 @@ class _AppShellPageState extends State<AppShellPage> {
 
   @override
   Widget build(BuildContext context) {
-    final configs = [
-      (
-        title: '你的记忆总览',
-        subtitle: '先看系统对素材的理解结果，再进入具体分类和修正流程。',
-        child: HomePage(onNavigate: _selectTab),
-      ),
-      (
-        title: '统一资产库',
-        subtitle: '先按来源、标签和路径筛选，再决定从哪条记忆线继续深入。',
-        child: LibraryPage(),
-      ),
-      (
-        title: '智能相册',
-        subtitle: '按语义自动组织，而不是按文件夹命名来回查找。',
-        child: AlbumsPage(),
-      ),
-      (
-        title: '人物与关系',
-        subtitle: '先做聚类，再由你确认谁是谁，系统才会稳定记住。',
-        child: PeoplePage(),
-      ),
-      (
-        title: '记忆时间轴',
-        subtitle: '让系统把素材按事件和时间重新讲述，而不是平铺所有图片。',
-        child: TimelinePage(),
-      ),
-      (
-        title: '整理中枢',
-        subtitle: '所有扫描、缩略图、分类和待修正任务都应该在这里被管理。',
-        child: OrganizePage(),
-      ),
-    ];
-
-    final active = configs[selectedIndex];
+    final active = _configs[selectedIndex];
     return ShellScaffold(
       destinations: destinations,
       selectedIndex: selectedIndex,
       onSelect: (index) => setState(() => selectedIndex = index),
       title: active.title,
       subtitle: active.subtitle,
-      child: active.child,
+      child: IndexedStack(
+        index: selectedIndex,
+        children: _configs
+            .map(
+              (config) => KeyedSubtree(
+                key: PageStorageKey(config.title),
+                child: config.child,
+              ),
+            )
+            .toList(),
+      ),
     );
   }
+}
+
+class _ShellPageConfig {
+  const _ShellPageConfig({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
 }

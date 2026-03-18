@@ -78,4 +78,29 @@ void main() {
     expect(find.text('整理中枢'), findsWidgets);
     expect(find.text('仅看当前来源任务'), findsOneWidget);
   });
+
+  testWidgets('shell keeps page state when switching sections',
+      (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const CodexFeishuHomeApp(skipBootstrap: true));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('资产库').first);
+    await tester.pumpAndSettle();
+
+    final searchField = find.byType(TextField).first;
+    await tester.enterText(searchField, 'cat');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('智能相册').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('资产库').first);
+    await tester.pumpAndSettle();
+
+    final restoredField =
+        tester.widget<TextField>(find.byType(TextField).first);
+    expect(restoredField.controller?.text, 'cat');
+  });
 }
