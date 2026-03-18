@@ -14,6 +14,8 @@ DOCUMENT_HINTS = {"screenshot", "截屏", "screen shot", "capture", "document", 
 @dataclass(frozen=True, slots=True)
 class IndexedAsset:
     asset_id: str
+    source_id: str
+    source_name: str
     root_path: str
     relative_path: str
     file_name: str
@@ -30,7 +32,15 @@ class FileIndexer:
     def __init__(self, thumbnailer):
         self._thumbnailer = thumbnailer
 
-    def scan(self, root_path: Path, recursive: bool, scan_job_id: str) -> list[IndexedAsset]:
+    def scan(
+        self,
+        root_path: Path,
+        recursive: bool,
+        scan_job_id: str,
+        *,
+        source_id: str,
+        source_name: str,
+    ) -> list[IndexedAsset]:
         walker = root_path.rglob("*") if recursive else root_path.glob("*")
         assets: list[IndexedAsset] = []
 
@@ -49,6 +59,8 @@ class FileIndexer:
             assets.append(
                 IndexedAsset(
                     asset_id=asset_id,
+                    source_id=source_id,
+                    source_name=source_name,
                     root_path=str(root_path),
                     relative_path=relative_path,
                     file_name=path.name,

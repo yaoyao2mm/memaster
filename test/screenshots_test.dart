@@ -66,7 +66,8 @@ void main() {
       child: AlbumsPage(repository: repository),
       selectedIndex: 1,
     );
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('../assets/readme/albums-demo.png'));
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('../assets/readme/albums-demo.png'));
   });
 
   testWidgets('generate people screenshot', (tester) async {
@@ -77,7 +78,8 @@ void main() {
       child: PeoplePage(repository: repository),
       selectedIndex: 2,
     );
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('../assets/readme/people-demo.png'));
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('../assets/readme/people-demo.png'));
   });
 
   testWidgets('generate timeline screenshot', (tester) async {
@@ -88,7 +90,8 @@ void main() {
       child: TimelinePage(repository: repository),
       selectedIndex: 3,
     );
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('../assets/readme/timeline-demo.png'));
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('../assets/readme/timeline-demo.png'));
   });
 
   testWidgets('generate organize screenshot', (tester) async {
@@ -99,7 +102,8 @@ void main() {
       child: OrganizePage(repository: repository),
       selectedIndex: 4,
     );
-    await expectLater(find.byType(MaterialApp), matchesGoldenFile('../assets/readme/organize-demo.png'));
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('../assets/readme/organize-demo.png'));
   });
 }
 

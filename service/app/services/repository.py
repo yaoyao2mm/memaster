@@ -11,11 +11,13 @@ from app.schemas.models import (
     AlbumItem,
     AssetItem,
     CorrectionRequest,
+    CreateSourceRequest,
     ConfirmPersonRequest,
     CorrectionResponse,
     CreateScanJobRequest,
     DashboardResponse,
     PersonItem,
+    SourceItem,
     ScanJobItem,
     StatItem,
     TimelineItem,
@@ -42,17 +44,88 @@ class MemoryRepository:
 
     def ensure_seed_data(self, default_scan_root: Path) -> None:
         self._ensure_people_seed()
+        source = self.ensure_source(
+            CreateSourceRequest(
+                source_type="mounted_folder",
+                display_name="Default Library",
+                root_path=str(default_scan_root),
+            )
+        )
         jobs = self.list_scan_jobs()
         if jobs:
             return
         self.create_scan_job(
             CreateScanJobRequest(
-                root_path=str(default_scan_root),
+                source_id=source.source_id,
                 recursive=False,
                 mode="incremental",
             ),
             allow_missing=True,
         )
+
+    def ensure_source(self, payload: CreateSourceRequest) -> SourceItem:
+        existing = self.get_source_by_path(payload.root_path)
+        if existing is not None:
+            return existing
+        return self.create_source(payload)
+
+    def create_source(self, payload: CreateSourceRequest) -> SourceItem:
+        root_path = Path(payload.root_path).expanduser()
+        source_id = f"source_{uuid4().hex[:8]}"
+        status = "ready" if root_path.exists() else "missing"
+        with self.db.connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO media_sources (
+                    source_id, source_type, display_name, root_path, status
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    source_id,
+                    payload.source_type,
+                    payload.display_name,
+                    str(root_path),
+                    status,
+                ),
+            )
+        source = self.get_source(source_id)
+        assert source is not None
+        return source
+
+    def list_sources(self) -> list[SourceItem]:
+        with self.db.connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT source_id, source_type, display_name, root_path, status, last_scan_at
+                FROM media_sources
+                ORDER BY datetime(updated_at) DESC, display_name ASC
+                """
+            ).fetchall()
+        return [SourceItem.model_validate(dict(row)) for row in rows]
+
+    def get_source(self, source_id: str) -> SourceItem | None:
+        with self.db.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT source_id, source_type, display_name, root_path, status, last_scan_at
+                FROM media_sources
+                WHERE source_id = ?
+                """,
+                (source_id,),
+            ).fetchone()
+        return SourceItem.model_validate(dict(row)) if row else None
+
+    def get_source_by_path(self, root_path: str) -> SourceItem | None:
+        with self.db.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT source_id, source_type, display_name, root_path, status, last_scan_at
+                FROM media_sources
+                WHERE root_path = ?
+                """,
+                (str(Path(root_path).expanduser()),),
+            ).fetchone()
+        return SourceItem.model_validate(dict(row)) if row else None
 
     def create_scan_job(
         self,
@@ -60,15 +133,20 @@ class MemoryRepository:
         *,
         allow_missing: bool = False,
     ) -> ScanJobItem:
-        root_path = Path(payload.root_path).expanduser()
+        source = self.get_source(payload.source_id)
+        if source is None:
+            raise ValueError("Unknown source")
+        root_path = Path(source.root_path).expanduser()
         job_id = f"scan_{uuid4().hex[:8]}"
         created_at = datetime.now(UTC).isoformat()
         queued = {
             "job_id": job_id,
-            "title": "新扫描任务",
+            "source_id": source.source_id,
+            "title": f"{source.display_name} 扫描任务",
             "status": "queued",
             "progress": 0.0,
             "detail": f"{root_path} 已加入队列",
+            "source_name": source.display_name,
             "root_path": str(root_path),
             "mode": payload.mode,
             "recursive": 1 if payload.recursive else 0,
@@ -79,9 +157,9 @@ class MemoryRepository:
             conn.execute(
                 """
                 INSERT INTO scan_jobs (
-                    job_id, title, status, progress, detail, root_path, mode, recursive, created_at, updated_at
+                    job_id, source_id, title, status, progress, detail, source_name, root_path, mode, recursive, created_at, updated_at
                 ) VALUES (
-                    :job_id, :title, :status, :progress, :detail, :root_path, :mode, :recursive, :created_at, :updated_at
+                    :job_id, :source_id, :title, :status, :progress, :detail, :source_name, :root_path, :mode, :recursive, :created_at, :updated_at
                 )
                 """,
                 queued,
@@ -90,10 +168,18 @@ class MemoryRepository:
         if not root_path.exists():
             status = "completed" if allow_missing else "queued"
             detail = f"{root_path} 不存在，尚未扫描"
+            self._update_source_status(source.source_id, root_path)
             return self._update_job(job_id, status=status, progress=0.0, detail=detail)
 
-        assets = self.indexer.scan(root_path, payload.recursive, job_id)
+        assets = self.indexer.scan(
+            root_path,
+            payload.recursive,
+            job_id,
+            source_id=source.source_id,
+            source_name=source.display_name,
+        )
         self._persist_assets(assets)
+        self._update_source_status(source.source_id, root_path, scanned=True)
         return self._update_job(
             job_id,
             status="completed",
@@ -105,7 +191,7 @@ class MemoryRepository:
         with self.db.connection() as conn:
             row = conn.execute(
                 """
-                SELECT job_id, title, status, progress, detail, root_path, mode
+                SELECT job_id, source_id, source_name, title, status, progress, detail, root_path, mode
                 FROM scan_jobs
                 WHERE job_id = ?
                 """,
@@ -117,7 +203,7 @@ class MemoryRepository:
         with self.db.connection() as conn:
             rows = conn.execute(
                 """
-                SELECT job_id, title, status, progress, detail, root_path, mode
+                SELECT job_id, source_id, source_name, title, status, progress, detail, root_path, mode
                 FROM scan_jobs
                 ORDER BY datetime(created_at) DESC
                 """
@@ -132,6 +218,7 @@ class MemoryRepository:
         timeline = self.timeline(limit=3)
         return DashboardResponse(
             stats=stats,
+            sources=self.list_sources(),
             smart_albums=albums,
             signals=signals,
             recent_events=timeline,
@@ -165,15 +252,26 @@ class MemoryRepository:
             items = items[:limit]
         return items
 
-    def assets(self, album_type: str | None = None, limit: int | None = None) -> list[AssetItem]:
+    def assets(
+        self,
+        album_type: str | None = None,
+        source_id: str | None = None,
+        limit: int | None = None,
+    ) -> list[AssetItem]:
         query = """
-            SELECT asset_id, file_name, relative_path, media_kind, smart_album_type, thumbnail_path, size_bytes, modified_at, root_path
+            SELECT asset_id, source_id, source_name, file_name, relative_path, media_kind, smart_album_type, thumbnail_path, size_bytes, modified_at, root_path
             FROM media_assets
         """
         params: list[object] = []
+        clauses: list[str] = []
         if album_type:
-            query += " WHERE smart_album_type = ?"
+            clauses.append("smart_album_type = ?")
             params.append(album_type)
+        if source_id:
+            clauses.append("source_id = ?")
+            params.append(source_id)
+        if clauses:
+            query += f" WHERE {' AND '.join(clauses)}"
         query += " ORDER BY datetime(modified_at) DESC, file_name ASC"
         if limit is not None:
             query += " LIMIT ?"
@@ -338,13 +436,15 @@ class MemoryRepository:
             conn.executemany(
                 """
                 INSERT INTO media_assets (
-                    asset_id, root_path, relative_path, file_name, extension, media_kind,
+                    asset_id, source_id, source_name, root_path, relative_path, file_name, extension, media_kind,
                     smart_album_type, thumbnail_path, size_bytes, modified_at, last_scan_job_id
                 ) VALUES (
-                    :asset_id, :root_path, :relative_path, :file_name, :extension, :media_kind,
+                    :asset_id, :source_id, :source_name, :root_path, :relative_path, :file_name, :extension, :media_kind,
                     :smart_album_type, :thumbnail_path, :size_bytes, :modified_at, :last_scan_job_id
                 )
                 ON CONFLICT(root_path, relative_path) DO UPDATE SET
+                    source_id=excluded.source_id,
+                    source_name=excluded.source_name,
                     file_name=excluded.file_name,
                     extension=excluded.extension,
                     media_kind=excluded.media_kind,
@@ -458,6 +558,19 @@ class MemoryRepository:
         if not thumbnail_path:
             return None
         return f"{self.thumbnails_base_url}/{thumbnail_path}"
+
+    def _update_source_status(self, source_id: str, root_path: Path, *, scanned: bool = False) -> None:
+        status = "ready" if root_path.exists() else "missing"
+        with self.db.connection() as conn:
+            conn.execute(
+                """
+                UPDATE media_sources
+                SET status = ?, last_scan_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE last_scan_at END,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE source_id = ?
+                """,
+                (status, 1 if scanned else 0, source_id),
+            )
 
     def _ensure_people_seed(self) -> None:
         with self.db.connection() as conn:

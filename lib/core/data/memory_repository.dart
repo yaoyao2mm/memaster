@@ -19,6 +19,39 @@ class MemoryRepository {
     }
   }
 
+  Future<List<MediaSource>> fetchSources() async {
+    try {
+      final json = await _apiClient.getJson('/sources');
+      return _parseList(json['items'], MediaSource.fromJson);
+    } catch (_) {
+      return MockMemoryData.sources;
+    }
+  }
+
+  Future<MediaSource?> createSource({
+    required String displayName,
+    required String rootPath,
+    required String sourceType,
+  }) async {
+    try {
+      final json = await _apiClient.postJson(
+        '/sources',
+        body: {
+          'display_name': displayName,
+          'root_path': rootPath,
+          'source_type': sourceType,
+        },
+      );
+      final item = json['item'];
+      if (item is! Map) {
+        return null;
+      }
+      return MediaSource.fromJson(item.cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<SmartAlbum>> fetchAlbums() async {
     try {
       final json = await _apiClient.getJson('/albums');
@@ -91,7 +124,8 @@ class MemoryRepository {
     int limit = 120,
   }) async {
     try {
-      final json = await _apiClient.getJson('/timeline/$eventId/assets?limit=$limit');
+      final json =
+          await _apiClient.getJson('/timeline/$eventId/assets?limit=$limit');
       return _parseList(json['items'], MediaAsset.fromJson);
     } catch (_) {
       return MockMemoryData.assets;
@@ -108,7 +142,7 @@ class MemoryRepository {
   }
 
   Future<ScanJob?> createScanJob({
-    required String rootPath,
+    required String sourceId,
     required bool recursive,
     required String mode,
   }) async {
@@ -116,7 +150,7 @@ class MemoryRepository {
       final created = await _apiClient.postJson(
         '/scan-jobs',
         body: {
-          'root_path': rootPath,
+          'source_id': sourceId,
           'recursive': recursive,
           'mode': mode,
         },

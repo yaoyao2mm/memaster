@@ -4,6 +4,25 @@ import '../models/app_models.dart';
 import '../theme/app_colors.dart';
 
 class MockMemoryData {
+  static const sources = [
+    MediaSource(
+      sourceId: 'source_nas',
+      sourceType: 'mounted_folder',
+      displayName: 'UGREEN HomeMedia',
+      rootPath: '/Volumes/UGREEN/HomeMedia',
+      status: 'ready',
+      lastScanAt: '2026-03-18T10:30:00Z',
+    ),
+    MediaSource(
+      sourceId: 'source_local',
+      sourceType: 'local_folder',
+      displayName: 'Mac Photos Export',
+      rootPath: '/Users/john/Pictures/Exports',
+      status: 'ready',
+      lastScanAt: '2026-03-17T09:10:00Z',
+    ),
+  ];
+
   static const heroStats = [
     MemoryStat(label: '已索引素材', value: '18,420', delta: '+184'),
     MemoryStat(label: '智能相册', value: '42', delta: '+3'),
@@ -129,6 +148,8 @@ class MockMemoryData {
       status: '进行中',
       progress: 0.72,
       detail: '/Volumes/UGREEN/HomeMedia 过去 24 小时新增 184 项',
+      sourceId: 'source_nas',
+      sourceName: 'UGREEN HomeMedia',
       rootPath: '/Volumes/UGREEN/HomeMedia',
       mode: 'incremental',
     ),
@@ -137,6 +158,8 @@ class MockMemoryData {
       status: '排队中',
       progress: 0.41,
       detail: '等待视频封面和 HEIC 转码任务',
+      sourceId: 'source_nas',
+      sourceName: 'UGREEN HomeMedia',
       rootPath: '/Volumes/UGREEN/HomeMedia',
       mode: 'thumbnail',
     ),
@@ -145,6 +168,8 @@ class MockMemoryData {
       status: '已完成',
       progress: 1,
       detail: '本轮合并了 2 个相似簇，人物标签更稳定',
+      sourceId: 'source_nas',
+      sourceName: 'UGREEN HomeMedia',
       rootPath: '/Volumes/UGREEN/HomeMedia',
       mode: 'people',
     ),
@@ -159,6 +184,8 @@ class MockMemoryData {
   static const assets = [
     MediaAsset(
       assetId: 'asset_cat_001',
+      sourceId: 'source_nas',
+      sourceName: 'UGREEN HomeMedia',
       fileName: 'cat_sleeping.jpg',
       relativePath: 'pets/cat_sleeping.jpg',
       mediaKind: 'image',
@@ -170,6 +197,8 @@ class MockMemoryData {
     ),
     MediaAsset(
       assetId: 'asset_trip_001',
+      sourceId: 'source_nas',
+      sourceName: 'UGREEN HomeMedia',
       fileName: 'trip_beach.png',
       relativePath: 'travel/trip_beach.png',
       mediaKind: 'image',
@@ -181,6 +210,8 @@ class MockMemoryData {
     ),
     MediaAsset(
       assetId: 'asset_doc_001',
+      sourceId: 'source_nas',
+      sourceName: 'UGREEN HomeMedia',
       fileName: 'screen_shot_001.png',
       relativePath: 'screens/screen_shot_001.png',
       mediaKind: 'image',
@@ -205,6 +236,7 @@ class MockMemoryData {
 
   static const dashboard = DashboardData(
     stats: heroStats,
+    sources: sources,
     smartAlbums: albums,
     signals: signals,
     recentEvents: memoryEvents,

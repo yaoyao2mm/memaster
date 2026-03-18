@@ -10,6 +10,15 @@ class HealthResponse(BaseModel):
     models: dict[str, str]
 
 
+class SourceItem(BaseModel):
+    source_id: str
+    source_type: Literal["local_folder", "mounted_folder"]
+    display_name: str
+    root_path: str
+    status: Literal["ready", "missing"]
+    last_scan_at: str | None = None
+
+
 class StatItem(BaseModel):
     label: str
     value: str
@@ -62,12 +71,16 @@ class ScanJobItem(BaseModel):
     status: Literal["queued", "running", "completed"]
     progress: float = Field(ge=0, le=1)
     detail: str
+    source_id: str | None = None
+    source_name: str | None = None
     root_path: str
     mode: str
 
 
 class AssetItem(BaseModel):
     asset_id: str
+    source_id: str | None = None
+    source_name: str | None = None
     file_name: str
     relative_path: str
     media_kind: str
@@ -80,6 +93,7 @@ class AssetItem(BaseModel):
 
 class DashboardResponse(BaseModel):
     stats: list[StatItem]
+    sources: list[SourceItem] = Field(default_factory=list)
     smart_albums: list[AlbumItem]
     signals: list[StatItem]
     recent_events: list[TimelineItem]
@@ -87,8 +101,14 @@ class DashboardResponse(BaseModel):
     people: list[PersonItem]
 
 
-class CreateScanJobRequest(BaseModel):
+class CreateSourceRequest(BaseModel):
+    source_type: Literal["local_folder", "mounted_folder"] = "local_folder"
+    display_name: str
     root_path: str
+
+
+class CreateScanJobRequest(BaseModel):
+    source_id: str
     recursive: bool = True
     mode: Literal["incremental", "full", "thumbnail", "people"] = "incremental"
 

@@ -45,21 +45,33 @@ def test_dashboard_shape(tmp_path: Path):
     assert response.status_code == 200
     payload = response.json()
     assert len(payload["stats"]) >= 4
+    assert len(payload["sources"]) >= 1
     assert len(payload["smart_albums"]) >= 3
     assert len(payload["people"]) >= 1
     assert payload["stats"][0]["value"] == "4"
 
 
-def test_create_scan_job(tmp_path: Path):
+def test_sources_and_scan_job(tmp_path: Path):
     client = make_client(tmp_path)
     second_root = tmp_path / "second"
     second_root.mkdir()
     (second_root / "coffee.jpg").write_bytes(b"coffee")
 
+    create_source = client.post(
+        "/sources",
+        json={
+            "source_type": "local_folder",
+            "display_name": "Second Library",
+            "root_path": str(second_root),
+        },
+    )
+    assert create_source.status_code == 201
+    source_id = create_source.json()["item"]["source_id"]
+
     response = client.post(
         "/scan-jobs",
         json={
-            "root_path": str(second_root),
+            "source_id": source_id,
             "recursive": True,
             "mode": "incremental",
         },
@@ -69,7 +81,12 @@ def test_create_scan_job(tmp_path: Path):
 
     job_response = client.get(f"/scan-jobs/{job_id}")
     assert job_response.status_code == 200
+    assert job_response.json()["source_id"] == source_id
     assert job_response.json()["root_path"] == str(second_root)
+
+    source_assets = client.get("/assets", params={"source_id": source_id}).json()
+    assert source_assets["total"] == 1
+    assert source_assets["items"][0]["file_name"] == "coffee.jpg"
 
 
 def test_confirm_person(tmp_path: Path):
@@ -85,7 +102,8 @@ def test_confirm_person(tmp_path: Path):
 
 def test_assets_filter(tmp_path: Path):
     client = make_client(tmp_path)
-    response = client.get("/assets", params={"album_type": "pet"})
+    default_source = client.get("/sources").json()["items"][0]["source_id"]
+    response = client.get("/assets", params={"album_type": "pet", "source_id": default_source})
     assert response.status_code == 200
     payload = response.json()
     assert payload["total"] == 1

@@ -8,6 +8,7 @@ from app.schemas.models import (
     CorrectionResponse,
     CreateScanJobRequest,
     CreateScanJobResponse,
+    CreateSourceRequest,
     HealthResponse,
 )
 
@@ -28,6 +29,18 @@ def dashboard(request: Request):
     return _repository(request).dashboard()
 
 
+@router.get("/sources")
+def sources(request: Request):
+    items = _repository(request).list_sources()
+    return {"items": items, "total": len(items)}
+
+
+@router.post("/sources", status_code=status.HTTP_201_CREATED)
+def create_source(request: Request, payload: CreateSourceRequest):
+    item = _repository(request).create_source(payload)
+    return {"item": item}
+
+
 @router.get("/albums")
 def albums(
     request: Request,
@@ -43,9 +56,10 @@ def albums(
 def assets(
     request: Request,
     album_type: str | None = Query(default=None),
+    source_id: str | None = Query(default=None),
     limit: int | None = Query(default=None, ge=1, le=500),
 ):
-    items = _repository(request).assets(album_type=album_type, limit=limit)
+    items = _repository(request).assets(album_type=album_type, source_id=source_id, limit=limit)
     return {"items": items, "total": len(items)}
 
 
@@ -81,7 +95,10 @@ def timeline_assets(
 
 @router.post("/scan-jobs", response_model=CreateScanJobResponse, status_code=status.HTTP_201_CREATED)
 def create_scan_job(request: Request, payload: CreateScanJobRequest) -> CreateScanJobResponse:
-    job = _repository(request).create_scan_job(payload)
+    try:
+        job = _repository(request).create_scan_job(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return CreateScanJobResponse(job_id=job.job_id, status=job.status)
 
 

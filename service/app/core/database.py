@@ -6,12 +6,25 @@ from pathlib import Path
 
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS media_sources (
+    source_id TEXT PRIMARY KEY,
+    source_type TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    root_path TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'ready',
+    last_scan_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS scan_jobs (
     job_id TEXT PRIMARY KEY,
+    source_id TEXT,
     title TEXT NOT NULL,
     status TEXT NOT NULL,
     progress REAL NOT NULL,
     detail TEXT NOT NULL,
+    source_name TEXT,
     root_path TEXT NOT NULL,
     mode TEXT NOT NULL,
     recursive INTEGER NOT NULL DEFAULT 1,
@@ -21,6 +34,8 @@ CREATE TABLE IF NOT EXISTS scan_jobs (
 
 CREATE TABLE IF NOT EXISTS media_assets (
     asset_id TEXT PRIMARY KEY,
+    source_id TEXT,
+    source_name TEXT,
     root_path TEXT NOT NULL,
     relative_path TEXT NOT NULL,
     file_name TEXT NOT NULL,
@@ -85,9 +100,24 @@ class Database:
     def init(self) -> None:
         with self.connection() as conn:
             conn.executescript(SCHEMA)
+            scan_job_columns = {
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(scan_jobs)").fetchall()
+            }
+            if "source_id" not in scan_job_columns:
+                conn.execute("ALTER TABLE scan_jobs ADD COLUMN source_id TEXT")
+            if "source_name" not in scan_job_columns:
+                conn.execute("ALTER TABLE scan_jobs ADD COLUMN source_name TEXT")
             columns = {
                 row["name"]
                 for row in conn.execute("PRAGMA table_info(media_assets)").fetchall()
             }
             if "thumbnail_path" not in columns:
                 conn.execute("ALTER TABLE media_assets ADD COLUMN thumbnail_path TEXT")
+            if "source_id" not in columns:
+                conn.execute("ALTER TABLE media_assets ADD COLUMN source_id TEXT")
+            if "source_name" not in columns:
+                conn.execute("ALTER TABLE media_assets ADD COLUMN source_name TEXT")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_media_assets_source_id ON media_assets (source_id)"
+            )

@@ -1,5 +1,34 @@
 import 'package:flutter/material.dart';
 
+class MediaSource {
+  const MediaSource({
+    required this.sourceId,
+    required this.sourceType,
+    required this.displayName,
+    required this.rootPath,
+    required this.status,
+    this.lastScanAt,
+  });
+
+  final String sourceId;
+  final String sourceType;
+  final String displayName;
+  final String rootPath;
+  final String status;
+  final String? lastScanAt;
+
+  factory MediaSource.fromJson(Map<String, dynamic> json) {
+    return MediaSource(
+      sourceId: json['source_id'] as String? ?? '',
+      sourceType: json['source_type'] as String? ?? 'local_folder',
+      displayName: json['display_name'] as String? ?? '',
+      rootPath: json['root_path'] as String? ?? '',
+      status: json['status'] as String? ?? 'ready',
+      lastScanAt: json['last_scan_at'] as String?,
+    );
+  }
+}
+
 class MemoryStat {
   const MemoryStat({
     required this.label,
@@ -110,6 +139,8 @@ class ScanJob {
     required this.status,
     required this.progress,
     required this.detail,
+    this.sourceId,
+    this.sourceName,
     this.rootPath,
     this.mode,
   });
@@ -118,6 +149,8 @@ class ScanJob {
   final String status;
   final double progress;
   final String detail;
+  final String? sourceId;
+  final String? sourceName;
   final String? rootPath;
   final String? mode;
 
@@ -127,6 +160,8 @@ class ScanJob {
       status: json['status'] as String? ?? '',
       progress: (json['progress'] as num?)?.toDouble() ?? 0,
       detail: json['detail'] as String? ?? '',
+      sourceId: json['source_id'] as String?,
+      sourceName: json['source_name'] as String?,
       rootPath: json['root_path'] as String?,
       mode: json['mode'] as String?,
     );
@@ -136,6 +171,8 @@ class ScanJob {
 class MediaAsset {
   const MediaAsset({
     required this.assetId,
+    this.sourceId,
+    this.sourceName,
     required this.fileName,
     required this.relativePath,
     required this.mediaKind,
@@ -147,6 +184,8 @@ class MediaAsset {
   });
 
   final String assetId;
+  final String? sourceId;
+  final String? sourceName;
   final String fileName;
   final String relativePath;
   final String mediaKind;
@@ -159,6 +198,8 @@ class MediaAsset {
   factory MediaAsset.fromJson(Map<String, dynamic> json) {
     return MediaAsset(
       assetId: json['asset_id'] as String? ?? '',
+      sourceId: json['source_id'] as String?,
+      sourceName: json['source_name'] as String?,
       fileName: json['file_name'] as String? ?? '',
       relativePath: json['relative_path'] as String? ?? '',
       mediaKind: json['media_kind'] as String? ?? '',
@@ -213,6 +254,7 @@ class AppDestination {
 class DashboardData {
   const DashboardData({
     required this.stats,
+    required this.sources,
     required this.smartAlbums,
     required this.signals,
     required this.recentEvents,
@@ -221,6 +263,7 @@ class DashboardData {
   });
 
   final List<MemoryStat> stats;
+  final List<MediaSource> sources;
   final List<SmartAlbum> smartAlbums;
   final List<MemoryStat> signals;
   final List<MemoryEvent> recentEvents;
@@ -230,6 +273,7 @@ class DashboardData {
   factory DashboardData.fromJson(Map<String, dynamic> json) {
     return DashboardData(
       stats: _listFromJson(json['stats'], MemoryStat.fromJson),
+      sources: _listFromJson(json['sources'], MediaSource.fromJson),
       smartAlbums: _listFromJson(json['smart_albums'], SmartAlbum.fromJson),
       signals: _listFromJson(json['signals'], MemoryStat.fromJson),
       recentEvents: _listFromJson(json['recent_events'], MemoryEvent.fromJson),
