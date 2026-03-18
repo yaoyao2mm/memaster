@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memaster/app.dart';
@@ -43,5 +44,22 @@ void main() {
 
     expect(find.text('整理中枢'), findsWidgets);
     expect(find.text('先建立数据来源，再发起索引任务'), findsOneWidget);
+  });
+
+  testWidgets('shell supports keyboard shortcuts for section switching',
+      (WidgetTester tester) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const CodexFeishuHomeApp(skipBootstrap: true));
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit6);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+    await tester.pumpAndSettle();
+
+    expect(find.text('整理中枢'), findsWidgets);
+    expect(find.text('仅看当前来源任务'), findsOneWidget);
   });
 }
