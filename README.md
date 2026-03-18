@@ -22,6 +22,19 @@ This repository contains:
 5. Open `人物` to confirm identities
 6. Open `时间轴` to browse memory cards and event assets
 
+## macOS demo preview
+
+The current desktop demo already covers the main loop of the product:
+scan a mounted NAS folder, let the system group assets into semantic albums,
+confirm people clusters, and revisit those materials again through event-style
+timeline cards.
+
+| Smart albums | People |
+| --- | --- |
+| ![macOS smart albums demo](assets/readme/albums-demo.png) | ![macOS people demo](assets/readme/people-demo.png) |
+| Timeline | Organize |
+| ![macOS timeline demo](assets/readme/timeline-demo.png) | ![macOS organize demo](assets/readme/organize-demo.png) |
+
 ## Planned product shape
 
 `memaster` is not a generic NAS file browser. It is a personal memory layer on top of NAS media:
@@ -48,17 +61,6 @@ This repository contains:
 - People confirmation with persistence
 - Timeline memory cards with event asset drill-down
 - Demo thumbnail pipeline for assets
-
-## Run status
-
-The workspace where this was created does not currently have Flutter installed, so the UI code could not be executed here.
-
-Once Flutter is available, the next step is:
-
-```bash
-flutter pub get
-flutter run -d macos
-```
 
 ## Local API service
 

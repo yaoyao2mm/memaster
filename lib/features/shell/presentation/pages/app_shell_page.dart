@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../../../core/models/app_models.dart';
@@ -24,7 +26,30 @@ class _AppShellPageState extends State<AppShellPage> {
     AppDestination(label: '整理', icon: Icons.tune_rounded),
   ];
 
-  int selectedIndex = 0;
+  late int selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedIndex = _initialSelectedIndex();
+  }
+
+  int _initialSelectedIndex() {
+    const defaultIndex = 0;
+    final rawValue = Platform.environment['MEMASTER_SCREENSHOT_PAGE'];
+    switch (rawValue) {
+      case 'albums':
+        return 1;
+      case 'people':
+        return 2;
+      case 'timeline':
+        return 3;
+      case 'organize':
+        return 4;
+      default:
+        return defaultIndex;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

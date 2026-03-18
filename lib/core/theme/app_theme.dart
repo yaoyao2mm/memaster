@@ -3,6 +3,13 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  static const _cjkFallbacks = [
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Noto Sans CJK SC',
+    '.AppleSystemUIFont',
+  ];
+
   static ThemeData light() {
     final base = ThemeData(
       useMaterial3: true,
@@ -23,6 +30,7 @@ class AppTheme {
     final textTheme = bodyTextTheme.copyWith(
       displayLarge: const TextStyle(
         fontFamily: 'Georgia',
+        fontFamilyFallback: _cjkFallbacks,
         fontSize: 48,
         fontWeight: FontWeight.w600,
         color: AppColors.ink,
@@ -30,6 +38,7 @@ class AppTheme {
       ),
       displayMedium: const TextStyle(
         fontFamily: 'Georgia',
+        fontFamilyFallback: _cjkFallbacks,
         fontSize: 34,
         fontWeight: FontWeight.w600,
         color: AppColors.ink,
@@ -37,30 +46,35 @@ class AppTheme {
       ),
       headlineMedium: const TextStyle(
         fontFamily: 'PlusJakartaSans',
+        fontFamilyFallback: _cjkFallbacks,
         fontSize: 28,
         fontWeight: FontWeight.w700,
         color: AppColors.ink,
       ),
       headlineSmall: const TextStyle(
         fontFamily: 'PlusJakartaSans',
+        fontFamilyFallback: _cjkFallbacks,
         fontSize: 22,
         fontWeight: FontWeight.w700,
         color: AppColors.ink,
       ),
       titleLarge: const TextStyle(
         fontFamily: 'PlusJakartaSans',
+        fontFamilyFallback: _cjkFallbacks,
         fontSize: 18,
         fontWeight: FontWeight.w700,
         color: AppColors.ink,
       ),
       titleMedium: const TextStyle(
         fontFamily: 'PlusJakartaSans',
+        fontFamilyFallback: _cjkFallbacks,
         fontSize: 15,
         fontWeight: FontWeight.w700,
         color: AppColors.ink,
       ),
       bodyLarge: const TextStyle(
         fontFamily: 'PlusJakartaSans',
+        fontFamilyFallback: _cjkFallbacks,
         fontSize: 15,
         fontWeight: FontWeight.w500,
         color: AppColors.ink,
@@ -68,6 +82,7 @@ class AppTheme {
       ),
       bodyMedium: const TextStyle(
         fontFamily: 'PlusJakartaSans',
+        fontFamilyFallback: _cjkFallbacks,
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: AppColors.mutedInk,
@@ -75,6 +90,7 @@ class AppTheme {
       ),
       labelLarge: const TextStyle(
         fontFamily: 'PlusJakartaSans',
+        fontFamilyFallback: _cjkFallbacks,
         fontSize: 13,
         fontWeight: FontWeight.w700,
         color: AppColors.ink,
