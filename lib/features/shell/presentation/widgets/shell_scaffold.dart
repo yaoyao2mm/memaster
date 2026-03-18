@@ -31,18 +31,21 @@ class ShellScaffold extends StatelessWidget {
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 1100;
+              final isWide = constraints.maxWidth >= 1180;
+              final isCompact = constraints.maxWidth < 760;
+              final sidePanelWidth =
+                  constraints.maxWidth >= 1320 ? 260.0 : 232.0;
               return Padding(
                 padding: EdgeInsets.symmetric(
-                  horizontal: isWide ? 24 : 16,
-                  vertical: 20,
+                  horizontal: isWide ? 24 : (isCompact ? 12 : 16),
+                  vertical: isCompact ? 12 : 20,
                 ),
                 child: isWide
                     ? Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SizedBox(
-                            width: 260,
+                            width: sidePanelWidth,
                             child: _NavigationPanel(
                               destinations: destinations,
                               selectedIndex: selectedIndex,
@@ -51,7 +54,8 @@ class ShellScaffold extends StatelessWidget {
                           ),
                           const SizedBox(width: 20),
                           Expanded(
-                            child: _ContentPanel(title: title, subtitle: subtitle, child: child),
+                            child: _ContentPanel(
+                                title: title, subtitle: subtitle, child: child),
                           ),
                         ],
                       )
@@ -66,7 +70,8 @@ class ShellScaffold extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
                           Expanded(
-                            child: _ContentPanel(title: title, subtitle: subtitle, child: child),
+                            child: _ContentPanel(
+                                title: title, subtitle: subtitle, child: child),
                           ),
                         ],
                       ),
@@ -112,7 +117,8 @@ class _NavigationPanel extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                   decoration: BoxDecoration(
                     color: selected
                         ? AppColors.deepNavy
@@ -154,7 +160,8 @@ class _NavigationPanel extends StatelessWidget {
               children: [
                 Text('Local-first AI', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
-                Text('SMB 读取、SQLite 索引、本地推理优先。', style: theme.textTheme.bodyMedium),
+                Text('SMB 读取、SQLite 索引、本地推理优先。',
+                    style: theme.textTheme.bodyMedium),
               ],
             ),
           ),
@@ -177,19 +184,39 @@ class _ContentPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GlassCard(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: theme.textTheme.displayMedium),
-          const SizedBox(height: 10),
-          Text(subtitle, style: theme.textTheme.bodyLarge),
-          const SizedBox(height: 22),
-          Expanded(child: child),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final theme = Theme.of(context);
+        final isCompact = constraints.maxWidth < 760;
+        return GlassCard(
+          padding: EdgeInsets.fromLTRB(
+            isCompact ? 16 : 24,
+            isCompact ? 18 : 24,
+            isCompact ? 16 : 24,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: isCompact
+                    ? theme.textTheme.headlineSmall
+                    : theme.textTheme.displayMedium,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                subtitle,
+                style: isCompact
+                    ? theme.textTheme.bodyMedium
+                    : theme.textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 22),
+              Expanded(child: child),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -243,4 +270,3 @@ class _MobileHeader extends StatelessWidget {
     );
   }
 }
-

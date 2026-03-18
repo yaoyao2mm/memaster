@@ -43,8 +43,11 @@ class MemoryRepository:
     indexer: FileIndexer
     thumbnails_base_url: str = "/thumbs"
 
-    def ensure_seed_data(self, default_scan_root: Path) -> None:
+    def ensure_reference_data(self) -> None:
         self._ensure_people_seed()
+
+    def ensure_seed_data(self, default_scan_root: Path) -> None:
+        self.ensure_reference_data()
         source = self.ensure_source(
             CreateSourceRequest(
                 source_type="mounted_folder",

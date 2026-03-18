@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'core/data/memory_repository.dart';
+import 'core/services/local_service_runtime.dart';
 import 'core/theme/app_theme.dart';
+import 'features/bootstrap/presentation/pages/app_bootstrap_page.dart';
 import 'features/shell/presentation/pages/app_shell_page.dart';
 
 class CodexFeishuHomeApp extends StatelessWidget {
-  const CodexFeishuHomeApp({super.key});
+  const CodexFeishuHomeApp({
+    super.key,
+    this.skipBootstrap = false,
+    this.repository,
+    this.serviceRuntime,
+  });
+
+  final bool skipBootstrap;
+  final MemoryRepository? repository;
+  final LocalServiceRuntime? serviceRuntime;
 
   @override
   Widget build(BuildContext context) {
@@ -12,7 +24,12 @@ class CodexFeishuHomeApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'memaster',
       theme: AppTheme.light(),
-      home: const AppShellPage(),
+      home: skipBootstrap
+          ? const AppShellPage()
+          : AppBootstrapPage(
+              repository: repository ?? MemoryRepository.instance,
+              serviceRuntime: serviceRuntime ?? LocalServiceRuntime(),
+            ),
     );
   }
 }

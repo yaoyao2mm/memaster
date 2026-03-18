@@ -13,13 +13,14 @@ def create_app(
     *,
     settings: Settings | None = None,
     repository: MemoryRepository | None = None,
-    bootstrap: bool = True,
+    bootstrap: bool = False,
 ) -> FastAPI:
     settings = settings or load_settings()
     repository = repository or MemoryRepository(
         db=Database(settings.db_path),
         indexer=FileIndexer(Thumbnailer(settings.thumbnails_dir)),
     )
+    repository.ensure_reference_data()
     if bootstrap:
         repository.ensure_seed_data(settings.default_scan_root)
 

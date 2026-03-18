@@ -12,7 +12,9 @@ import '../../../timeline/presentation/pages/timeline_page.dart';
 import '../widgets/shell_scaffold.dart';
 
 class AppShellPage extends StatefulWidget {
-  const AppShellPage({super.key});
+  const AppShellPage({super.key, this.initialSelectedIndex});
+
+  final int? initialSelectedIndex;
 
   @override
   State<AppShellPage> createState() => _AppShellPageState();
@@ -33,7 +35,7 @@ class _AppShellPageState extends State<AppShellPage> {
   @override
   void initState() {
     super.initState();
-    selectedIndex = _initialSelectedIndex();
+    selectedIndex = widget.initialSelectedIndex ?? _initialSelectedIndex();
   }
 
   int _initialSelectedIndex() {
@@ -41,18 +43,24 @@ class _AppShellPageState extends State<AppShellPage> {
     final rawValue = Platform.environment['MEMASTER_SCREENSHOT_PAGE'];
     switch (rawValue) {
       case 'albums':
-        return 2;
+        return AppShellTab.albums.index;
       case 'library':
-        return 1;
+        return AppShellTab.library.index;
       case 'people':
-        return 3;
+        return AppShellTab.people.index;
       case 'timeline':
-        return 4;
+        return AppShellTab.timeline.index;
       case 'organize':
-        return 5;
+        return AppShellTab.organize.index;
       default:
         return defaultIndex;
     }
+  }
+
+  void _selectTab(AppShellTab tab) {
+    setState(() {
+      selectedIndex = tab.index;
+    });
   }
 
   @override
@@ -61,7 +69,7 @@ class _AppShellPageState extends State<AppShellPage> {
       (
         title: '你的记忆总览',
         subtitle: '先看系统对素材的理解结果，再进入具体分类和修正流程。',
-        child: HomePage(),
+        child: HomePage(onNavigate: _selectTab),
       ),
       (
         title: '统一资产库',

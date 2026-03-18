@@ -5,6 +5,8 @@
 .flutter-plugins-dependencies
 .metadata
 build/
+dist/
+.run/
 pubspec.lock
 .pytest_cache/
 .venv/

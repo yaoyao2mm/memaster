@@ -17,12 +17,12 @@ This repository contains:
 
 ## Demo flow
 
-1. Start the local API service
-2. Launch the Flutter app on macOS
-3. Open `整理` and submit a local or mounted path
-4. Open `智能相册` to review scanned assets and adjust labels
-5. Open `人物` to confirm identities
-6. Open `时间轴` to browse memory cards and event assets
+1. Launch the macOS app
+2. Let the app auto-start the local indexing service
+3. Add the first local or mounted source in onboarding
+4. Wait for the first scan job to build the index
+5. Open `资产库` to inspect results, add tags, and locate originals
+6. Open `智能相册` / `人物` / `时间轴` for higher-level views
 
 ## macOS demo preview
 
@@ -67,26 +67,77 @@ of your media sources:
 
 ## Local API service
 
+For internal development only:
+
 ```bash
 cd service
 uv sync
 uv run uvicorn app.main:app --reload --port 4318
 ```
 
+Or from the repository root:
+
+```bash
+./scripts/start-backend.sh
+```
+
 ## Flutter demo
+
+For internal development only:
 
 ```bash
 flutter pub get
 flutter run -d macos
 ```
 
+Or from the repository root:
+
+```bash
+./scripts/start-frontend.sh
+```
+
+## Stack control scripts
+
+Run both services in the background:
+
+```bash
+./scripts/start-stack.sh
+```
+
+Restart both services:
+
+```bash
+./scripts/restart-stack.sh
+```
+
+Check whether both services are running:
+
+```bash
+./scripts/status-stack.sh
+```
+
+## macOS distribution
+
+Build a trial bundle that embeds the local service:
+
+```bash
+./scripts/build-macos-distribution.sh
+```
+
+This produces:
+
+- `dist/memaster.app`
+- `dist/memaster.dmg`
+
+More detail: [docs/distribution.md](docs/distribution.md)
+
 ## Trigger a real scan from Flutter
 
-1. Choose a local folder or mount your UGREEN NAS over SMB so it appears as a local path such as `/Volumes/UGREEN/HomeMedia`
-2. Start the local API service
-3. Launch the Flutter app
-4. Open the `整理` page
-5. Paste the mounted path and click `开始扫描`
+1. Launch the app and let it auto-start the local service
+2. Choose a local folder or mount your UGREEN NAS over SMB so it appears as a local path such as `/Volumes/UGREEN/HomeMedia`
+3. Complete the first-run onboarding
+4. Open the `资产库` page to confirm the index exists
+5. Open the `整理` page to inspect source and scan status
 
 ## Repository structure
 

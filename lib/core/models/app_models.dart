@@ -254,6 +254,19 @@ class AppDestination {
   final IconData icon;
 }
 
+enum AppShellTab {
+  overview,
+  library,
+  albums,
+  people,
+  timeline,
+  organize,
+}
+
+extension AppShellTabX on AppShellTab {
+  int get index => AppShellTab.values.indexOf(this);
+}
+
 class DashboardData {
   const DashboardData({
     required this.stats,

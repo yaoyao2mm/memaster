@@ -22,16 +22,33 @@ class LibraryPage extends StatefulWidget {
 class _LibraryPageState extends State<LibraryPage> {
   late Future<List<MediaSource>> _sourcesFuture;
   late Future<List<MediaAsset>> _assetsFuture;
+  late final TextEditingController _queryController;
   List<MediaAsset> _assetsCache = const [];
   String? _selectedSourceId;
   String _selectedAlbumType = 'all';
+  _AssetSort _sort = _AssetSort.modifiedDesc;
   String _query = '';
 
   @override
   void initState() {
     super.initState();
+    _queryController = TextEditingController();
     _sourcesFuture = widget._repository.fetchSources();
-    _assetsFuture = widget._repository.fetchAssets(limit: 240);
+    _assetsFuture = _loadAssets();
+  }
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  Future<List<MediaAsset>> _loadAssets() {
+    return widget._repository.fetchAssets(
+      sourceId: _selectedSourceId,
+      albumType: _selectedAlbumType == 'all' ? null : _selectedAlbumType,
+      limit: 240,
+    );
   }
 
   void _applyFilters({
@@ -43,11 +60,24 @@ class _LibraryPageState extends State<LibraryPage> {
       if (albumType != null) {
         _selectedAlbumType = albumType;
       }
-      _assetsFuture = widget._repository.fetchAssets(
-        sourceId: _selectedSourceId,
-        albumType: _selectedAlbumType == 'all' ? null : _selectedAlbumType,
-        limit: 240,
-      );
+      _assetsFuture = _loadAssets();
+    });
+  }
+
+  void _refresh() {
+    setState(() {
+      _sourcesFuture = widget._repository.fetchSources();
+      _assetsFuture = _loadAssets();
+    });
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _selectedSourceId = null;
+      _selectedAlbumType = 'all';
+      _query = '';
+      _queryController.clear();
+      _assetsFuture = _loadAssets();
     });
   }
 
@@ -121,131 +151,186 @@ class _LibraryPageState extends State<LibraryPage> {
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: GlassCard(
                 borderRadius: 32,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isCompact = constraints.maxWidth < 560;
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            currentAsset.fileName,
-                            style: theme.textTheme.headlineSmall,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '这条记录来自统一索引层。你现在可以维护来源、分类、标签和文件定位信息。',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 18),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        _MetaPill(
-                            label: currentAsset.sourceName ?? 'Unknown Source'),
-                        _MetaPill(
-                            label: _albumLabel(currentAsset.smartAlbumType)),
-                        _MetaPill(
-                            label: currentAsset.mediaKind == 'video'
-                                ? '视频'
-                                : '图片'),
-                        _MetaPill(label: _formatSize(currentAsset.sizeBytes)),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Text('用户标签', style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 10),
-                    if (currentAsset.tags.isEmpty)
-                      Text('还没有用户标签。', style: theme.textTheme.bodyMedium)
-                    else
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: currentAsset.tags
-                            .map(
-                              (tag) => InputChip(
-                                label: Text(tag),
-                                onDeleted: () => removeTag(tag),
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: tagController,
-                            decoration: InputDecoration(
-                              hintText: '新增标签，例如 猫猫 / 精选 / 要整理',
-                              filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.72),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide:
-                                    const BorderSide(color: AppColors.line),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide:
-                                    const BorderSide(color: AppColors.line),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                currentAsset.fileName,
+                                style: theme.textTheme.headlineSmall,
                               ),
                             ),
-                            onSubmitted: (_) => addTag(),
+                            IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '这条记录来自统一索引层。你现在可以维护来源、分类、标签和文件定位信息。',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 18),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            _MetaPill(
+                              label:
+                                  currentAsset.sourceName ?? 'Unknown Source',
+                            ),
+                            _MetaPill(
+                              label: _albumLabel(currentAsset.smartAlbumType),
+                            ),
+                            _MetaPill(
+                              label: currentAsset.mediaKind == 'video'
+                                  ? '视频'
+                                  : '图片',
+                            ),
+                            _MetaPill(
+                                label: _formatSize(currentAsset.sizeBytes)),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Text('用户标签', style: theme.textTheme.titleMedium),
+                        const SizedBox(height: 10),
+                        if (currentAsset.tags.isEmpty)
+                          Text('还没有用户标签。', style: theme.textTheme.bodyMedium)
+                        else
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: currentAsset.tags
+                                .map(
+                                  (tag) => InputChip(
+                                    label: Text(tag),
+                                    onDeleted: () => removeTag(tag),
+                                  ),
+                                )
+                                .toList(),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        FilledButton(
-                          onPressed: tagSubmitting ? null : addTag,
-                          child: Text(tagSubmitting ? '提交中…' : '添加标签'),
+                        const SizedBox(height: 12),
+                        isCompact
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  TextField(
+                                    controller: tagController,
+                                    decoration: InputDecoration(
+                                      hintText: '新增标签，例如 猫猫 / 精选 / 要整理',
+                                      filled: true,
+                                      fillColor:
+                                          Colors.white.withValues(alpha: 0.72),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.line,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                        borderSide: const BorderSide(
+                                          color: AppColors.line,
+                                        ),
+                                      ),
+                                    ),
+                                    onSubmitted: (_) => addTag(),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  FilledButton(
+                                    onPressed: tagSubmitting ? null : addTag,
+                                    child:
+                                        Text(tagSubmitting ? '提交中…' : '添加标签'),
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: tagController,
+                                      decoration: InputDecoration(
+                                        hintText: '新增标签，例如 猫猫 / 精选 / 要整理',
+                                        filled: true,
+                                        fillColor: Colors.white
+                                            .withValues(alpha: 0.72),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          borderSide: const BorderSide(
+                                            color: AppColors.line,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          borderSide: const BorderSide(
+                                            color: AppColors.line,
+                                          ),
+                                        ),
+                                      ),
+                                      onSubmitted: (_) => addTag(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  FilledButton(
+                                    onPressed: tagSubmitting ? null : addTag,
+                                    child:
+                                        Text(tagSubmitting ? '提交中…' : '添加标签'),
+                                  ),
+                                ],
+                              ),
+                        const SizedBox(height: 20),
+                        _DetailRow(
+                            label: '来源根目录', value: currentAsset.rootPath),
+                        _DetailRow(
+                            label: '相对路径', value: currentAsset.relativePath),
+                        _DetailRow(label: '完整路径', value: fullPath),
+                        _DetailRow(
+                            label: '修改时间', value: currentAsset.modifiedAt),
+                        const SizedBox(height: 20),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: () => _openOriginal(fullPath),
+                              icon: const Icon(Icons.open_in_new_rounded),
+                              label: const Text('打开原文件'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => _revealInFileManager(fullPath),
+                              icon: const Icon(Icons.folder_open_rounded),
+                              label: const Text('在 Finder 中显示'),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final messenger = ScaffoldMessenger.of(context);
+                                await Clipboard.setData(
+                                  ClipboardData(text: fullPath),
+                                );
+                                if (!mounted) {
+                                  return;
+                                }
+                                messenger.showSnackBar(
+                                  const SnackBar(content: Text('完整路径已复制')),
+                                );
+                              },
+                              icon: const Icon(Icons.content_copy_rounded),
+                              label: const Text('复制路径'),
+                            ),
+                          ],
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 20),
-                    _DetailRow(label: '来源根目录', value: currentAsset.rootPath),
-                    _DetailRow(label: '相对路径', value: currentAsset.relativePath),
-                    _DetailRow(label: '完整路径', value: fullPath),
-                    _DetailRow(label: '修改时间', value: currentAsset.modifiedAt),
-                    const SizedBox(height: 20),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        FilledButton.icon(
-                          onPressed: () => _openOriginal(fullPath),
-                          icon: const Icon(Icons.open_in_new_rounded),
-                          label: const Text('打开原文件'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () => _revealInFileManager(fullPath),
-                          icon: const Icon(Icons.folder_open_rounded),
-                          label: const Text('在 Finder 中显示'),
-                        ),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            await Clipboard.setData(
-                                ClipboardData(text: fullPath));
-                            if (!mounted) {
-                              return;
-                            }
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('完整路径已复制')),
-                            );
-                          },
-                          icon: const Icon(Icons.content_copy_rounded),
-                          label: const Text('复制路径'),
-                        ),
-                      ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             );
@@ -334,6 +419,7 @@ class _LibraryPageState extends State<LibraryPage> {
                   ),
                   const SizedBox(height: 22),
                   TextField(
+                    controller: _queryController,
                     onChanged: (value) {
                       setState(() {
                         _query = value.trim().toLowerCase();
@@ -342,6 +428,17 @@ class _LibraryPageState extends State<LibraryPage> {
                     decoration: InputDecoration(
                       hintText: '搜索文件名或相对路径，例如 cat / travel / screenshot',
                       prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () {
+                                _queryController.clear();
+                                setState(() {
+                                  _query = '';
+                                });
+                              },
+                              icon: const Icon(Icons.close_rounded),
+                            ),
                       filled: true,
                       fillColor: Colors.white.withValues(alpha: 0.72),
                       border: OutlineInputBorder(
@@ -353,6 +450,65 @@ class _LibraryPageState extends State<LibraryPage> {
                         borderSide: const BorderSide(color: AppColors.line),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      FilledButton.tonalIcon(
+                        onPressed: _refresh,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('刷新'),
+                      ),
+                      DropdownButtonHideUnderline(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.76),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.line),
+                          ),
+                          child: DropdownButton<_AssetSort>(
+                            value: _sort,
+                            borderRadius: BorderRadius.circular(16),
+                            items: const [
+                              DropdownMenuItem(
+                                value: _AssetSort.modifiedDesc,
+                                child: Text('按时间排序'),
+                              ),
+                              DropdownMenuItem(
+                                value: _AssetSort.sizeDesc,
+                                child: Text('按体积排序'),
+                              ),
+                              DropdownMenuItem(
+                                value: _AssetSort.nameAsc,
+                                child: Text('按名称排序'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value == null) {
+                                return;
+                              }
+                              setState(() {
+                                _sort = value;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      if (_selectedSourceId != null ||
+                          _selectedAlbumType != 'all' ||
+                          _query.isNotEmpty)
+                        OutlinedButton(
+                          onPressed: _clearFilters,
+                          child: const Text('清除过滤'),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Wrap(
@@ -432,6 +588,7 @@ class _LibraryPageState extends State<LibraryPage> {
                                 .toLowerCase();
                         return haystack.contains(_query);
                       }).toList();
+                final sortedAssets = _sortAssets(displayAssets);
                 return GlassCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,9 +596,26 @@ class _LibraryPageState extends State<LibraryPage> {
                       Text('已索引资产', style: theme.textTheme.titleLarge),
                       const SizedBox(height: 8),
                       Text(
-                        '当前显示 ${displayAssets.length} 条结果',
+                        '当前显示 ${sortedAssets.length} 条结果，来源 ${sources.length} 个',
                         style: theme.textTheme.bodyMedium,
                       ),
+                      if (_selectedSourceId != null ||
+                          _selectedAlbumType != 'all' ||
+                          _query.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (_selectedSourceId != null)
+                              _MetaPill(label: _selectedSourceLabel(sources)),
+                            if (_selectedAlbumType != 'all')
+                              _MetaPill(label: _albumLabel(_selectedAlbumType)),
+                            if (_query.isNotEmpty)
+                              _MetaPill(label: '搜索: $_query'),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 18),
                       if (assetSnapshot.connectionState ==
                               ConnectionState.waiting &&
@@ -450,7 +624,7 @@ class _LibraryPageState extends State<LibraryPage> {
                           padding: EdgeInsets.symmetric(vertical: 32),
                           child: Center(child: CircularProgressIndicator()),
                         )
-                      else if (displayAssets.isEmpty)
+                      else if (sortedAssets.isEmpty)
                         Text('当前过滤条件下还没有资产。', style: theme.textTheme.bodyLarge)
                       else
                         LayoutBuilder(
@@ -460,7 +634,7 @@ class _LibraryPageState extends State<LibraryPage> {
                             return GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              itemCount: displayAssets.length,
+                              itemCount: sortedAssets.length,
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: columns,
@@ -470,9 +644,9 @@ class _LibraryPageState extends State<LibraryPage> {
                               ),
                               itemBuilder: (context, index) {
                                 return _AssetLibraryCard(
-                                  asset: displayAssets[index],
+                                  asset: sortedAssets[index],
                                   onTap: () =>
-                                      _showAssetDetail(displayAssets[index]),
+                                      _showAssetDetail(sortedAssets[index]),
                                 );
                               },
                             );
@@ -488,6 +662,38 @@ class _LibraryPageState extends State<LibraryPage> {
       },
     );
   }
+
+  List<MediaAsset> _sortAssets(List<MediaAsset> assets) {
+    final sorted = [...assets];
+    switch (_sort) {
+      case _AssetSort.modifiedDesc:
+        sorted
+            .sort((left, right) => right.modifiedAt.compareTo(left.modifiedAt));
+        break;
+      case _AssetSort.sizeDesc:
+        sorted.sort((left, right) => right.sizeBytes.compareTo(left.sizeBytes));
+        break;
+      case _AssetSort.nameAsc:
+        sorted.sort((left, right) => left.fileName.compareTo(right.fileName));
+        break;
+    }
+    return sorted;
+  }
+
+  String _selectedSourceLabel(List<MediaSource> sources) {
+    for (final source in sources) {
+      if (source.sourceId == _selectedSourceId) {
+        return source.displayName;
+      }
+    }
+    return '已选来源';
+  }
+}
+
+enum _AssetSort {
+  modifiedDesc,
+  sizeDesc,
+  nameAsc,
 }
 
 class _AssetLibraryCard extends StatelessWidget {
@@ -498,54 +704,117 @@ class _AssetLibraryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.84),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final theme = Theme.of(context);
+        final isCompact = constraints.maxWidth < 520;
+        return InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.line),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _AssetThumbnail(asset: asset),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(asset.fileName, style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 6),
-                  Text(asset.relativePath, style: theme.textTheme.bodyMedium),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.84),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: isCompact
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _MetaPill(label: asset.sourceName ?? 'Unknown Source'),
-                      _MetaPill(label: _albumLabel(asset.smartAlbumType)),
-                      _MetaPill(label: _formatSize(asset.sizeBytes)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _AssetThumbnail(asset: asset),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Text(
+                              asset.fileName,
+                              style: theme.textTheme.titleMedium,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.mutedInk,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        asset.relativePath,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _MetaPill(
+                              label: asset.sourceName ?? 'Unknown Source'),
+                          _MetaPill(label: _albumLabel(asset.smartAlbumType)),
+                          _MetaPill(label: _formatSize(asset.sizeBytes)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        asset.rootPath,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: AppColors.mutedInk,
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _AssetThumbnail(asset: asset),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(asset.fileName,
+                                style: theme.textTheme.titleMedium),
+                            const SizedBox(height: 6),
+                            Text(
+                              asset.relativePath,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _MetaPill(
+                                  label: asset.sourceName ?? 'Unknown Source',
+                                ),
+                                _MetaPill(
+                                  label: _albumLabel(asset.smartAlbumType),
+                                ),
+                                _MetaPill(label: _formatSize(asset.sizeBytes)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              asset.rootPath,
+                              style: theme.textTheme.labelLarge?.copyWith(
+                                color: AppColors.mutedInk,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.mutedInk,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    asset.rootPath,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: AppColors.mutedInk,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.mutedInk),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
