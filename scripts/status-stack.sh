@@ -13,7 +13,7 @@ FRONTEND_LOG="$LOG_DIR/frontend.log"
 BACKEND_URL="http://127.0.0.1:${PORT:-4318}"
 
 find_backend_pids() {
-  pgrep -f "uvicorn app.main:app --reload --port ${PORT:-4318}" || true
+  pgrep -f "uvicorn app.main:app( |$).*--port ${PORT:-4318}" || true
 }
 
 find_frontend_pids() {

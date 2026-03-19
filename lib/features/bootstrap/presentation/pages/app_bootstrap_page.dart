@@ -103,6 +103,7 @@ class _AppBootstrapPageState extends State<AppBootstrapPage> {
           description: _error ?? '当前无法自动拉起本地 service。',
           details: [
             ('最后错误', widget.serviceRuntime.lastError ?? '无更多错误信息'),
+            ('启动方式', widget.serviceRuntime.launchDescription ?? '未确定'),
             ('service 目录', widget.serviceRuntime.serviceDirectoryPath ?? '未找到'),
             (
               'Python 可执行文件',

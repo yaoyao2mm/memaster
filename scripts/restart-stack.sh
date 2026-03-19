@@ -10,7 +10,7 @@ BACKEND_PID_FILE="$RUN_DIR/backend.pid"
 FRONTEND_PID_FILE="$RUN_DIR/frontend.pid"
 
 find_backend_pids() {
-  pgrep -f "uvicorn app.main:app --reload --port $BACKEND_PORT" || true
+  pgrep -f "uvicorn app.main:app( |$).*--port $BACKEND_PORT" || true
 }
 
 find_frontend_pids() {
