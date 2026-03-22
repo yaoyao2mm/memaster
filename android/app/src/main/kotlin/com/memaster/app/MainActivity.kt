@@ -1,4 +1,4 @@
-package com.example.codex_feishu_home
+package com.memaster.app
 
 import io.flutter.embedding.android.FlutterActivity
 

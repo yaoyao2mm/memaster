@@ -4,6 +4,7 @@ import '../../../../core/data/memory_repository.dart';
 import '../../../../core/models/app_models.dart';
 import '../../../../core/network/local_api_client.dart';
 import '../../../../core/services/local_service_runtime.dart';
+import '../../../../core/widgets/app_window_frame.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../home/presentation/widgets/app_shell_background.dart';
 import '../../../onboarding/presentation/pages/onboarding_page.dart';
@@ -152,44 +153,47 @@ class _BootstrapScaffold extends StatelessWidget {
     return AppShellBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: GlassCard(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (loading) ...[
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 20),
-                      ],
-                      Text(title, style: theme.textTheme.displayMedium),
-                      const SizedBox(height: 12),
-                      Text(description, style: theme.textTheme.bodyLarge),
-                      if (details.isNotEmpty) ...[
-                        const SizedBox(height: 24),
-                        ...details.map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _BootstrapDetailRow(
-                              label: item.$1,
-                              value: item.$2,
+        body: AppWindowFrame(
+          child: SafeArea(
+            top: false,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: GlassCard(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (loading) ...[
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 20),
+                        ],
+                        Text(title, style: theme.textTheme.displayMedium),
+                        const SizedBox(height: 12),
+                        Text(description, style: theme.textTheme.bodyLarge),
+                        if (details.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          ...details.map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _BootstrapDetailRow(
+                                label: item.$1,
+                                value: item.$2,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
+                        if (actionLabel != null && onAction != null) ...[
+                          const SizedBox(height: 24),
+                          FilledButton(
+                            onPressed: onAction,
+                            child: Text(actionLabel!),
+                          ),
+                        ],
                       ],
-                      if (actionLabel != null && onAction != null) ...[
-                        const SizedBox(height: 24),
-                        FilledButton(
-                          onPressed: onAction,
-                          child: Text(actionLabel!),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               ),

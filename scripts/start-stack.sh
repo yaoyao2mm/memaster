@@ -22,7 +22,7 @@ find_backend_pids() {
 
 find_frontend_pids() {
   {
-    pgrep -f "$ROOT_DIR/build/macos/Build/Products/Debug/codex_feishu_home.app/Contents/MacOS/codex_feishu_home" || true
+    pgrep -f "$ROOT_DIR/build/macos/Build/Products/Debug/memaster.app/Contents/MacOS/memaster" || true
     pgrep -f "flutter_tools.snapshot run -d .*codex-feishu-home" || true
     pgrep -f "flutter_tools.snapshot run -d macos" || true
   } | awk 'NF && !seen[$0]++'

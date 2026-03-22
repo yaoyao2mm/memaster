@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/models/app_models.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_window_frame.dart';
 import '../../../../core/widgets/glass_card.dart';
 import '../../../home/presentation/widgets/app_shell_background.dart';
 
@@ -86,67 +87,70 @@ class ShellScaffold extends StatelessWidget {
             autofocus: true,
             child: Scaffold(
               backgroundColor: Colors.transparent,
-              body: SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 1180;
-                    final isCompact = constraints.maxWidth < 760;
-                    final sidePanelWidth =
-                        constraints.maxWidth >= 1320 ? 260.0 : 232.0;
-                    return Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isWide ? 24 : (isCompact ? 12 : 16),
-                        vertical: isCompact ? 12 : 20,
-                      ),
-                      child: isWide
-                          ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(
-                                  width: sidePanelWidth,
-                                  child: _NavigationPanel(
-                                    destinations: destinations,
-                                    selectedIndex: selectedIndex,
-                                    onSelect: onSelect,
+              body: AppWindowFrame(
+                child: SafeArea(
+                  top: false,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 1180;
+                      final isCompact = constraints.maxWidth < 760;
+                      final sidePanelWidth =
+                          constraints.maxWidth >= 1320 ? 260.0 : 232.0;
+                      return Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isWide ? 24 : (isCompact ? 12 : 16),
+                          vertical: isCompact ? 12 : 20,
+                        ),
+                        child: isWide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  SizedBox(
+                                    width: sidePanelWidth,
+                                    child: _NavigationPanel(
+                                      destinations: destinations,
+                                      selectedIndex: selectedIndex,
+                                      onSelect: onSelect,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 20),
-                                Expanded(
-                                  child: _ContentPanel(
-                                    destinations: destinations,
-                                    selectedIndex: selectedIndex,
-                                    onSelect: onSelect,
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    child: _ContentPanel(
+                                      destinations: destinations,
+                                      selectedIndex: selectedIndex,
+                                      onSelect: onSelect,
+                                      title: title,
+                                      subtitle: subtitle,
+                                      child: child,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                children: [
+                                  _MobileHeader(
                                     title: title,
                                     subtitle: subtitle,
-                                    child: child,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Column(
-                              children: [
-                                _MobileHeader(
-                                  title: title,
-                                  subtitle: subtitle,
-                                  destinations: destinations,
-                                  selectedIndex: selectedIndex,
-                                  onSelect: onSelect,
-                                ),
-                                const SizedBox(height: 16),
-                                Expanded(
-                                  child: _ContentPanel(
                                     destinations: destinations,
                                     selectedIndex: selectedIndex,
                                     onSelect: onSelect,
-                                    title: title,
-                                    subtitle: subtitle,
-                                    child: child,
                                   ),
-                                ),
-                              ],
-                            ),
-                    );
-                  },
+                                  const SizedBox(height: 16),
+                                  Expanded(
+                                    child: _ContentPanel(
+                                      destinations: destinations,
+                                      selectedIndex: selectedIndex,
+                                      onSelect: onSelect,
+                                      title: title,
+                                      subtitle: subtitle,
+                                      child: child,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -176,7 +180,7 @@ class _NavigationPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Feishu Home', style: theme.textTheme.titleLarge),
+          Text('memaster', style: theme.textTheme.titleLarge),
           const SizedBox(height: 8),
           Text('私人记忆系统', style: theme.textTheme.bodyMedium),
           const SizedBox(height: 24),

@@ -6,8 +6,8 @@ import 'core/theme/app_theme.dart';
 import 'features/bootstrap/presentation/pages/app_bootstrap_page.dart';
 import 'features/shell/presentation/pages/app_shell_page.dart';
 
-class CodexFeishuHomeApp extends StatelessWidget {
-  const CodexFeishuHomeApp({
+class MemasterApp extends StatelessWidget {
+  const MemasterApp({
     super.key,
     this.skipBootstrap = false,
     this.repository,

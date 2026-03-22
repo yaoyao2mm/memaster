@@ -29,6 +29,8 @@ class _ServiceLaunchPlan {
 }
 
 class LocalServiceRuntime {
+  static const _legacyMacOSBundleId = 'com.example.codexFeishuHome';
+
   LocalServiceRuntime({LocalApiClient? apiClient})
       : _apiClient = apiClient ?? LocalApiClient();
 
@@ -196,10 +198,9 @@ class LocalServiceRuntime {
       }
     }
 
-    addCandidate('${Directory.current.path}/service');
-
     final executableDir = File(Platform.resolvedExecutable).parent;
     addCandidate('${executableDir.parent.path}/Resources/service');
+    addCandidate('${Directory.current.path}/service');
 
     for (final base in [
       Directory.current,
@@ -332,9 +333,8 @@ class LocalServiceRuntime {
   List<String> _launchPathEntries(Directory serviceDir) {
     final separator = Platform.isWindows ? ';' : ':';
     final pathEntries = <String>[
-      if (Platform.environment['PATH'] case final value?) ...value
-          .split(separator)
-          .where((entry) => entry.isNotEmpty),
+      if (Platform.environment['PATH'] case final value?)
+        ...value.split(separator).where((entry) => entry.isNotEmpty),
       if (Platform.isMacOS) ...[
         '/opt/homebrew/bin',
         '/usr/local/bin',
@@ -375,6 +375,7 @@ class LocalServiceRuntime {
       if (!dir.existsSync()) {
         dir.createSync(recursive: true);
       }
+      _migrateLegacyMacOSAppDataIfNeeded(dir);
       return dir;
     }
     if (Platform.isLinux && home != null) {
@@ -397,5 +398,83 @@ class LocalServiceRuntime {
       fallback.createSync(recursive: true);
     }
     return fallback;
+  }
+
+  void _migrateLegacyMacOSAppDataIfNeeded(Directory targetDir) {
+    if (!Platform.isMacOS || _directoryHasEntries(targetDir)) {
+      return;
+    }
+
+    for (final candidate in _legacyMacOSAppDataCandidates(targetDir)) {
+      if (!candidate.existsSync() || !_directoryHasEntries(candidate)) {
+        continue;
+      }
+
+      _copyDirectoryContents(candidate, targetDir);
+      return;
+    }
+  }
+
+  List<Directory> _legacyMacOSAppDataCandidates(Directory targetDir) {
+    final actualHome = _resolveMacOSUserHome();
+    if (actualHome == null) {
+      return const [];
+    }
+
+    final targetPath = targetDir.absolute.path;
+    final candidates = <Directory>[
+      Directory(
+        '$actualHome/Library/Containers/$_legacyMacOSBundleId/Data/Library/Application Support/memaster',
+      ),
+      Directory('$actualHome/Library/Application Support/memaster'),
+    ];
+
+    return candidates
+        .where((candidate) => candidate.absolute.path != targetPath)
+        .toList();
+  }
+
+  String? _resolveMacOSUserHome() {
+    final home = Platform.environment['HOME'];
+    if (home == null || home.isEmpty) {
+      return null;
+    }
+
+    final containerMarker =
+        '${Platform.pathSeparator}Library${Platform.pathSeparator}Containers${Platform.pathSeparator}';
+    final markerIndex = home.indexOf(containerMarker);
+    if (markerIndex == -1) {
+      return home;
+    }
+
+    return home.substring(0, markerIndex);
+  }
+
+  bool _directoryHasEntries(Directory directory) {
+    if (!directory.existsSync()) {
+      return false;
+    }
+
+    return directory.listSync(followLinks: false).isNotEmpty;
+  }
+
+  void _copyDirectoryContents(Directory source, Directory target) {
+    for (final entity in source.listSync(followLinks: false)) {
+      final name = entity.path
+          .split(Platform.pathSeparator)
+          .where((segment) => segment.isNotEmpty)
+          .last;
+      final destinationPath = '${target.path}${Platform.pathSeparator}$name';
+
+      if (entity is Directory) {
+        final destinationDir = Directory(destinationPath);
+        if (!destinationDir.existsSync()) {
+          destinationDir.createSync(recursive: true);
+        }
+        _copyDirectoryContents(entity, destinationDir);
+      } else if (entity is File) {
+        entity.copySync(destinationPath);
+      }
+    }
   }
 }

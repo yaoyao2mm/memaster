@@ -12,7 +12,7 @@ import 'package:memaster/features/home/presentation/pages/home_page.dart';
 void main() {
   testWidgets('home dashboard renders key memory sections',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const CodexFeishuHomeApp(skipBootstrap: true));
+    await tester.pumpWidget(const MemasterApp(skipBootstrap: true));
     await tester.pumpAndSettle();
 
     expect(find.text('UGREEN HomeMedia 已就绪'), findsOneWidget);
@@ -27,7 +27,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(760, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const CodexFeishuHomeApp(skipBootstrap: true));
+    await tester.pumpWidget(const MemasterApp(skipBootstrap: true));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
@@ -40,7 +40,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const CodexFeishuHomeApp(skipBootstrap: true));
+    await tester.pumpWidget(const MemasterApp(skipBootstrap: true));
     await tester.pumpAndSettle();
 
     final cta = find.widgetWithText(FilledButton, '开始构建').first;
@@ -57,7 +57,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const CodexFeishuHomeApp(skipBootstrap: true));
+    await tester.pumpWidget(const MemasterApp(skipBootstrap: true));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('已索引素材').first);
@@ -72,7 +72,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const CodexFeishuHomeApp(skipBootstrap: true));
+    await tester.pumpWidget(const MemasterApp(skipBootstrap: true));
     await tester.pumpAndSettle();
 
     await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
@@ -89,7 +89,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const CodexFeishuHomeApp(skipBootstrap: true));
+    await tester.pumpWidget(const MemasterApp(skipBootstrap: true));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('资产库').first);
