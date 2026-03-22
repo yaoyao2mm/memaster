@@ -28,6 +28,7 @@ class ShellScaffold extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.child,
+    this.forceCustomWindowFrame = false,
   });
 
   final List<AppDestination> destinations;
@@ -36,6 +37,7 @@ class ShellScaffold extends StatelessWidget {
   final String title;
   final String subtitle;
   final Widget child;
+  final bool forceCustomWindowFrame;
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +90,7 @@ class ShellScaffold extends StatelessWidget {
             child: Scaffold(
               backgroundColor: Colors.transparent,
               body: AppWindowFrame(
+                forceEnabled: forceCustomWindowFrame,
                 child: SafeArea(
                   top: false,
                   child: LayoutBuilder(

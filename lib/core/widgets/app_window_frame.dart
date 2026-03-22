@@ -9,13 +9,15 @@ class AppWindowFrame extends StatelessWidget {
   const AppWindowFrame({
     super.key,
     required this.child,
+    this.forceEnabled = false,
   });
 
   final Widget child;
+  final bool forceEnabled;
 
   @override
   Widget build(BuildContext context) {
-    if (!supportsCustomWindowFrame) {
+    if (!(forceEnabled || supportsCustomWindowFrame)) {
       return child;
     }
 
@@ -56,13 +58,22 @@ class _WindowHeaderState extends State<_WindowHeader> with WindowListener {
   }
 
   Future<void> _syncWindowState() async {
-    final isMaximized = await windowManager.isMaximized();
-    if (!mounted) {
-      return;
+    try {
+      final isMaximized = await windowManager.isMaximized();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isMaximized = isMaximized;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isMaximized = false;
+      });
     }
-    setState(() {
-      _isMaximized = isMaximized;
-    });
   }
 
   @override

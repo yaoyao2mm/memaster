@@ -53,6 +53,7 @@ void main() {
           title: title,
           subtitle: subtitle,
           child: child,
+          forceCustomWindowFrame: true,
         ),
       ),
     );
