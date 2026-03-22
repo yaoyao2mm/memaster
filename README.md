@@ -1,58 +1,53 @@
 # memaster
 
-memaster is a local-first memory layer for personal media.
+<p align="center">
+  <strong>A local-first memory layer for personal media.</strong>
+</p>
 
-It sits on top of local folders, mounted NAS paths, and other file-based
-libraries, then turns those raw assets into:
+<p align="center">
+  memaster turns local folders and mounted NAS paths into a searchable memory system with smart albums,
+  people clusters, timeline views, and a bundled desktop indexing service.
+</p>
 
-- smart albums
-- people clusters
-- editable labels and correction loops
-- event-style timeline cards
-- a searchable local asset index
+<p align="center">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Flutter-54C5F8?style=flat-square">
+  <img alt="Focus" src="https://img.shields.io/badge/focus-local--first%20media-172033?style=flat-square">
+  <img alt="Backend" src="https://img.shields.io/badge/backend-FastAPI%20%2B%20SQLite-8FB4FF?style=flat-square">
+  <img alt="Desktop" src="https://img.shields.io/badge/macOS-embedded%20service-BBF4D2?style=flat-square&labelColor=172033&color=BBF4D2">
+</p>
 
-The current repository ships a Flutter desktop/mobile app plus a local FastAPI
-service that handles indexing, metadata, thumbnails, and demo intelligence
-workflows.
+## Why It Exists
 
-[GitHub Repository](https://github.com/yaoyao2mm/memaster)
-
-## Why This Exists
-
-Most personal media tools are still organized like file browsers. memaster is
-trying to behave more like a personal memory system:
+Most personal media tools still behave like file browsers.
+memaster is trying to behave more like a personal memory system:
 
 - source-first, not folder-first
 - semantic organization, not manual directory naming
 - local-first execution, not cloud-required
 - user correction as part of the product loop, not an afterthought
 
-The goal is not just to browse files. The goal is to help the user revisit
-people, trips, pets, food, documents, and daily life as coherent memories.
+The goal is not just to browse files.
+The goal is to help the user revisit people, trips, pets, food, documents, and daily life as coherent memories.
 
-## What Works Today
+## Highlights
 
-Current demo capabilities:
-
-- local and mounted-folder source management
-- real scan jobs against selected sources
-- SQLite-backed asset index
-- smart album aggregation
-- asset-level tag editing
-- album correction persistence
-- people confirmation workflows
-- event-style timeline views
-- thumbnail pipeline for demo assets
-- app-managed local backend bootstrap on startup
+- Local and mounted-folder source management
+- Real scan jobs against selected folders
+- SQLite-backed local asset index
+- Smart album aggregation
+- People confirmation workflows
+- Timeline-style memory views
+- Asset tag editing and correction persistence
+- Bundled local FastAPI service for the macOS app
+- Custom desktop shell with a lightweight memaster title bar
 
 ## Screenshots
 
-The current macOS demo already covers the main product loop in the new
-`memaster` desktop shell:
+The current macOS demo already covers the main product loop:
 
 - add a source
 - auto-start the local service
-- build an index
+- build the local index
 - inspect assets
 - confirm people
 - revisit grouped memories
@@ -63,56 +58,33 @@ The current macOS demo already covers the main product loop in the new
 | Timeline | Organize |
 | ![macOS timeline demo](assets/readme/timeline-demo.png) | ![macOS organize demo](assets/readme/organize-demo.png) |
 
-## Product Shape
+## Platform Support
 
-memaster is currently centered on a simple but opinionated flow:
+| Platform | Status | Notes |
+| --- | --- | --- |
+| macOS | Best supported | Custom desktop shell, embedded backend, real packaging flow |
+| iOS | Early scaffold | Flutter app exists, but bundled local service flow is not productized |
+| Android | Early scaffold | Flutter app exists, but bundled local service flow is not productized |
+| Windows | Not packaged yet | App structure exists, distribution flow not finished |
+| Linux | Not packaged yet | App structure exists, distribution flow not finished |
 
-1. Connect a local folder or mounted NAS path
-2. Run a scan job and build the local index
-3. Browse the unified asset library
-4. Review smart albums and people clusters
-5. Correct labels where the system is wrong
-6. Revisit those assets as event-driven memories
-
-This repository is not aiming to be a generic DAM or cloud photo platform.
-
-## Tech Stack
-
-- UI: Flutter
-- Local service: Python + FastAPI
-- Storage: SQLite
-- Thumbnails: local file pipeline
-- Future inference direction: ONNX Runtime + CLIP/SigLIP + InsightFace
-
-## Project Layout
-
-- `lib/`: Flutter application
-- `service/`: local FastAPI service
-- `assets/readme/`: README screenshots
-- `scripts/`: local dev and packaging scripts
-- `docs/`: product, architecture, API, and distribution notes
-
-## Quick Start
-
-### 1. Run the app
+## Run
 
 ```bash
 flutter pub get
 flutter run -d macos
 ```
 
-The app will try to auto-start the local service on launch. In development it
-uses the repository-local backend under `service/`.
+The app will try to auto-start the local service on launch.
 
-In development, backend startup now prefers:
+In development, backend startup prefers:
 
 1. `service/.venv/bin/python`
 2. `uv run ...` when available
 
-That means you usually do not need to manually start the backend if the local
-runtime already exists.
+That means you usually do not need to start the backend manually if the local runtime already exists.
 
-### 2. If you want to start the backend yourself
+### Start the backend yourself
 
 ```bash
 ./scripts/start-backend.sh
@@ -126,7 +98,7 @@ uv sync
 uv run uvicorn app.main:app --reload --port 4318
 ```
 
-### 3. Run the whole stack from the repo root
+### Run the full local stack
 
 ```bash
 ./scripts/start-stack.sh
@@ -140,59 +112,38 @@ Useful helpers:
 ./scripts/start-frontend.sh
 ```
 
-## First Demo Flow
+## Install On macOS Without An Apple Developer Account
 
-Use this if you want to see the product loop quickly:
+The packaged macOS app is currently unsigned for public distribution.
+If macOS blocks it on first launch, remove the quarantine flag in Terminal:
 
-1. Launch the macOS app
-2. Let the app auto-start the local service
-3. Add your first local folder or mounted NAS path in onboarding
-4. Wait for the first scan to finish
-5. Open `资产库` to confirm assets were indexed
-6. Open `智能相册`, `人物`, and `时间轴`
-7. Open `整理` to inspect source and task status
-
-Example mounted source path:
-
-```text
-/Volumes/UGREEN/HomeMedia
+```bash
+xattr -dr com.apple.quarantine /Applications/memaster.app
 ```
 
-## Development Notes
+If the app lives somewhere else, replace the path with the actual app location.
 
-### Backend bootstrap behavior
+## Local Service Notes
 
-The Flutter app is expected to start the local service automatically during app
-bootstrap.
-
-If that fails, check:
-
-- `service/.venv`
-- whether `uv` exists in PATH
-- the generated service log in development:
-
-```text
-~/Library/Application Support/memaster/logs/service.log
-```
-
-For the packaged macOS app, writable data moves into the app sandbox container:
-
-```text
-~/Library/Containers/com.memaster.app/Data/Library/Application Support/memaster/
-```
-
-### Local service health endpoint
+### Health endpoint
 
 ```text
 http://127.0.0.1:4318/health
 ```
 
-### Tests
+### Development data path
 
-```bash
-/Users/john/flutter/bin/flutter analyze
-/Users/john/flutter/bin/flutter test
+```text
+~/Library/Application Support/memaster/
 ```
+
+### Packaged macOS app data path
+
+```text
+~/Library/Containers/com.memaster.app/Data/Library/Application Support/memaster/
+```
+
+The packaged app restores data from previous memaster locations into the new container on first launch.
 
 ## Distribution
 
@@ -207,17 +158,24 @@ Outputs:
 - `dist/memaster.app`
 - `dist/memaster.dmg`
 
+The current macOS packaging flow:
+
+- embeds the FastAPI service under `Contents/Resources/service`
+- embeds a managed CPython runtime into the app bundle
+- installs production service dependencies into that runtime
+- re-signs the rebuilt app bundle after packaging changes
+- restores local memaster data into the new sandbox container on first launch
+
 More detail:
 
 - [docs/distribution.md](docs/distribution.md)
 
-The current macOS distribution flow now:
+## Verify
 
-- embeds the FastAPI service under `Contents/Resources/service`
-- embeds a managed CPython runtime into the bundle
-- signs the rebuilt app bundle after packaging
-- restores user data from previous `memaster` locations into the new
-  `com.memaster.app` container on first launch
+```bash
+flutter analyze
+flutter test
+```
 
 ## Documentation
 
@@ -228,9 +186,26 @@ The current macOS distribution flow now:
 - [docs/roadmap.md](docs/roadmap.md)
 - [docs/distribution.md](docs/distribution.md)
 
-## Status
+## Todo
 
-memaster is still an MVP-stage local product prototype, but the repository now
-already demonstrates the full source -> scan -> index -> review -> correct
-loop with a polished Flutter shell, a custom desktop title bar, and a real
-local backend that can be bundled into the macOS app.
+This section highlights the areas that still need the most product and release work.
+
+- [x] Rebrand the desktop app to `memaster`
+- [x] Replace the native desktop title bar with a custom shell header
+- [x] Bundle a local backend into the macOS app
+- [x] Restore previous local memaster data into the new app container
+- [ ] Improve the onboarding and source setup flow for first-time users
+- [ ] Expand the library and memory views beyond the current MVP demo depth
+- [ ] Harden desktop distribution with proper signing and notarization
+- [ ] Finish Windows and Linux packaging paths
+
+## Project Direction
+
+memaster is intentionally opinionated:
+
+- local-first over cloud-first
+- memory views over raw file browsing
+- correction loops over one-shot automation
+- desktop utility over heavyweight DAM complexity
+
+That keeps the product focused on helping people revisit their own media as memories instead of as folders.
