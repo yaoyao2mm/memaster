@@ -47,7 +47,8 @@ Current demo capabilities:
 
 ## Screenshots
 
-The current macOS demo already covers the main product loop:
+The current macOS demo already covers the main product loop in the new
+`memaster` desktop shell:
 
 - add a source
 - auto-start the local service
@@ -100,7 +101,8 @@ flutter pub get
 flutter run -d macos
 ```
 
-The app will try to auto-start the local service on launch.
+The app will try to auto-start the local service on launch. In development it
+uses the repository-local backend under `service/`.
 
 In development, backend startup now prefers:
 
@@ -167,10 +169,16 @@ If that fails, check:
 
 - `service/.venv`
 - whether `uv` exists in PATH
-- the generated service log:
+- the generated service log in development:
 
 ```text
 ~/Library/Application Support/memaster/logs/service.log
+```
+
+For the packaged macOS app, writable data moves into the app sandbox container:
+
+```text
+~/Library/Containers/com.memaster.app/Data/Library/Application Support/memaster/
 ```
 
 ### Local service health endpoint
@@ -203,6 +211,14 @@ More detail:
 
 - [docs/distribution.md](docs/distribution.md)
 
+The current macOS distribution flow now:
+
+- embeds the FastAPI service under `Contents/Resources/service`
+- embeds a managed CPython runtime into the bundle
+- signs the rebuilt app bundle after packaging
+- restores user data from previous `memaster` locations into the new
+  `com.memaster.app` container on first launch
+
 ## Documentation
 
 - [docs/local-ai-api.md](docs/local-ai-api.md)
@@ -216,4 +232,5 @@ More detail:
 
 memaster is still an MVP-stage local product prototype, but the repository now
 already demonstrates the full source -> scan -> index -> review -> correct
-loop with a polished Flutter shell and a real local backend.
+loop with a polished Flutter shell, a custom desktop title bar, and a real
+local backend that can be bundled into the macOS app.

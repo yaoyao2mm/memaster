@@ -12,8 +12,9 @@ internally, but they are distributed as one desktop bundle.
 
 - Frontend: Flutter macOS app
 - Backend: bundled FastAPI service under `Contents/Resources/service`
-- Python runtime: bundled from `service/.venv`
-- User data: created on first launch under Application Support
+- Python runtime: bundled from a managed CPython runtime prepared during the
+  packaging step
+- User data: created on first launch under the app sandbox container
 
 ## User-visible startup flow
 
@@ -30,9 +31,9 @@ The app should write mutable files outside the bundle.
 
 Current macOS target:
 
-- `~/Library/Application Support/memaster/memory.db`
-- `~/Library/Application Support/memaster/thumbnails/`
-- `~/Library/Application Support/memaster/logs/service.log`
+- `~/Library/Containers/com.memaster.app/Data/Library/Application Support/memaster/memory.db`
+- `~/Library/Containers/com.memaster.app/Data/Library/Application Support/memaster/thumbnails/`
+- `~/Library/Containers/com.memaster.app/Data/Library/Application Support/memaster/logs/service.log`
 
 ## Build artifacts
 
@@ -58,13 +59,13 @@ CREATE_DMG=0 ./scripts/build-macos-distribution.sh
 1. Runs `flutter build macos`
 2. Copies the release `.app` into `dist/`
 3. Embeds `service/` into `Contents/Resources/service`
-4. Excludes volatile directories such as service test output and local data
-5. Optionally creates a DMG with `hdiutil`
+4. Embeds a managed CPython runtime into `Contents/Resources/service/.venv`
+5. Installs the local service package and its production dependencies into that runtime
+6. Re-signs the app bundle after packaging changes
+7. Optionally creates a DMG with `hdiutil`
 
 ## Current limitations
 
-- The script assumes `service/.venv` already exists and is usable on the build
-  machine.
 - The app is not code-signed or notarized yet.
 - The embedded service path is wired for macOS trial distribution first.
 - Windows and Linux packaging are not implemented yet.
